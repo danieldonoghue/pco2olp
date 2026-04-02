@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/danield/pco2olp/internal/cache"
@@ -308,7 +309,7 @@ func mediaToServiceItem(item pco.Item, mf *cache.MediaFile) *openlp.ServiceItem 
 
 // attachmentToServiceItem creates a service item for a plan-level attachment.
 func attachmentToServiceItem(mf *cache.MediaFile) *openlp.ServiceItem {
-	title := mf.OriginalFilename
+	title := "ATTACHMENT - " + mf.OriginalFilename
 	storedName := mf.SHA256 + mf.Extension
 	hash := mf.SHA256
 	return newMediaServiceItem(title, mf.PCOMediaType, mf.ContentType, &hash, &storedName)
@@ -316,13 +317,13 @@ func attachmentToServiceItem(mf *cache.MediaFile) *openlp.ServiceItem {
 
 // newMediaServiceItem creates the correct OpenLP service item based on media type.
 func newMediaServiceItem(title, pcoMediaType, contentType string, hash, storedName *string) *openlp.ServiceItem {
-	// Determine OpenLP item type from PCO media_type or content type
 	switch {
 	case isImageType(pcoMediaType, contentType):
 		si := openlp.NewImageItem(title, hash, storedName)
 		return &si
 	case isPresentationType(pcoMediaType, contentType):
-		si := openlp.NewPresentationItem(title, hash, storedName)
+		processor := presentationProcessor(storedName)
+		si := openlp.NewPresentationItem(title, hash, storedName, processor)
 		return &si
 	default:
 		si := openlp.NewMediaItem(title, hash, storedName)
@@ -346,10 +347,33 @@ func isPresentationType(pcoMediaType, contentType string) bool {
 	switch {
 	case strings.Contains(contentType, "presentation"),
 		strings.Contains(contentType, "powerpoint"),
+		strings.Contains(contentType, "keynote"),
 		contentType == "application/pdf":
 		return true
 	}
 	return false
+}
+
+// presentationProcessor returns the OpenLP controller name for a presentation file.
+// OpenLP's MessageListener.startup() falls back to find_controller_by_type if the
+// saved processor isn't available, so "automatic" is a safe default.
+func presentationProcessor(storedName *string) string {
+	if storedName == nil {
+		return "automatic"
+	}
+	ext := strings.ToLower(filepath.Ext(*storedName))
+	switch ext {
+	case ".pdf":
+		return "Pdf"
+	case ".key":
+		return "Keynote"
+	case ".ppt", ".pps", ".pptx", ".ppsx", ".pptm":
+		return "Powerpoint"
+	case ".odp":
+		return "Impress"
+	default:
+		return "automatic"
+	}
 }
 
 func collectNotes(item pco.Item) string {

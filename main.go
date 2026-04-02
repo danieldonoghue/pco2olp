@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -25,8 +26,7 @@ var (
 
 func main() {
 	serviceType := flag.String("service-type", "", "Service type name or ID")
-	planID := flag.String("plan", "", "Plan ID (alternative to --date)")
-	date := flag.String("date", "", "Plan date (YYYY-MM-DD)")
+	planID := flag.String("plan", "", "Plan ID or date (YYYY-MM-DD)")
 	output := flag.String("output", "", "Output .osz file path (default: <date>-<title>.osz)")
 	listServiceTypes := flag.Bool("list-service-types", false, "List available service types")
 	listPlans := flag.Bool("list-plans", false, "List plans for a service type")
@@ -86,26 +86,25 @@ func main() {
 			os.Exit(1)
 		}
 	case *dryRun:
-		if *serviceType == "" || (*date == "" && *planID == "") {
-			fmt.Fprintf(os.Stderr, "Error: --service-type and --date (or --plan) are required with --dry-run\n")
+		if *serviceType == "" || *planID == "" {
+			fmt.Fprintf(os.Stderr, "Error: --service-type and --plan are required with --dry-run\n")
 			os.Exit(1)
 		}
-		if err := runDryRun(ctx, *serviceType, *date, *planID, *noHeaders, *debug); err != nil {
+		if err := runDryRun(ctx, *serviceType, *planID, *noHeaders, *debug); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 	default:
-		if *serviceType == "" || (*date == "" && *planID == "") {
-			fmt.Fprintf(os.Stderr, "Error: --service-type and --date (or --plan) are required\n")
-			fmt.Fprintf(os.Stderr, "Usage: pco2olp --service-type <name|id> --date <YYYY-MM-DD> [--output <file.osz>]\n")
-			fmt.Fprintf(os.Stderr, "       pco2olp --service-type <name|id> --plan <id> [--output <file.osz>]\n")
+		if *serviceType == "" || *planID == "" {
+			fmt.Fprintf(os.Stderr, "Error: --service-type and --plan are required\n")
+			fmt.Fprintf(os.Stderr, "Usage: pco2olp --service-type <name|id> --plan <id|YYYY-MM-DD> [--output <file.osz>]\n")
 			fmt.Fprintf(os.Stderr, "\nOther commands:\n")
 			fmt.Fprintf(os.Stderr, "  pco2olp --list-service-types\n")
 			fmt.Fprintf(os.Stderr, "  pco2olp --service-type <name|id> --list-plans\n")
-			fmt.Fprintf(os.Stderr, "  pco2olp --service-type <name|id> --date <YYYY-MM-DD> --dry-run\n")
+			fmt.Fprintf(os.Stderr, "  pco2olp --service-type <name|id> --plan <id|YYYY-MM-DD> --dry-run\n")
 			os.Exit(1)
 		}
-		if err := runGenerate(ctx, *serviceType, *date, *planID, *output, *noHeaders, *noCache, *debug); err != nil {
+		if err := runGenerate(ctx, *serviceType, *planID, *output, *noHeaders, *noCache, *debug); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -210,18 +209,16 @@ func runListPlans(ctx context.Context, serviceType string, all bool, debug bool)
 	return nil
 }
 
-func resolvePlan(ctx context.Context, client *pco.Client, serviceTypeID, dateStr, planIDStr string) (*pco.Plan, error) {
-	if planIDStr != "" {
-		return client.GetPlan(ctx, serviceTypeID, planIDStr)
+func resolvePlan(ctx context.Context, client *pco.Client, serviceTypeID, planRef string) (*pco.Plan, error) {
+	// If it looks like a date (YYYY-MM-DD), find plan by date
+	if date, err := time.Parse("2006-01-02", planRef); err == nil {
+		return client.FindPlanByDate(ctx, serviceTypeID, date)
 	}
-	date, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		return nil, fmt.Errorf("invalid date format %q (expected YYYY-MM-DD): %w", dateStr, err)
-	}
-	return client.FindPlanByDate(ctx, serviceTypeID, date)
+	// Otherwise treat as plan ID
+	return client.GetPlan(ctx, serviceTypeID, planRef)
 }
 
-func runDryRun(ctx context.Context, serviceType, dateStr, planIDStr string, noHeaders, debug bool) error {
+func runDryRun(ctx context.Context, serviceType, planRef string, noHeaders, debug bool) error {
 	client, err := authenticate(ctx, debug)
 	if err != nil {
 		return err
@@ -232,7 +229,7 @@ func runDryRun(ctx context.Context, serviceType, dateStr, planIDStr string, noHe
 		return err
 	}
 
-	plan, err := resolvePlan(ctx, client, st.ID, dateStr, planIDStr)
+	plan, err := resolvePlan(ctx, client, st.ID, planRef)
 	if err != nil {
 		return err
 	}
@@ -259,10 +256,26 @@ func runDryRun(ctx context.Context, serviceType, dateStr, planIDStr string, noHe
 		}
 		fmt.Printf("  %2d. [%-7s]  %s%s\n", i+1, item.ItemType, item.Title, extra)
 	}
+
+	attachments, err := client.GetPlanAttachments(ctx, st.ID, plan.ID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not fetch plan attachments: %v\n", err)
+		return nil
+	}
+	if len(attachments) > 0 {
+		fmt.Println("\nPlan attachments:")
+		for _, att := range attachments {
+			if att.FileSize == 0 || filepath.Ext(att.Filename) == "" {
+				fmt.Printf("  - %s (link, skipped)\n", att.Filename)
+			} else {
+				fmt.Printf("  - %s (%s, %s)\n", att.Filename, att.ContentType, formatSize(att.FileSize))
+			}
+		}
+	}
 	return nil
 }
 
-func runGenerate(ctx context.Context, serviceType, dateStr, planIDStr, output string, noHeaders, noCache, debug bool) error {
+func runGenerate(ctx context.Context, serviceType, planRef, output string, noHeaders, noCache, debug bool) error {
 	client, err := authenticate(ctx, debug)
 	if err != nil {
 		return err
@@ -273,13 +286,9 @@ func runGenerate(ctx context.Context, serviceType, dateStr, planIDStr, output st
 		return err
 	}
 
-	if planIDStr != "" {
-		fmt.Printf("Fetching plan %s for %q...\n", planIDStr, st.Name)
-	} else {
-		fmt.Printf("Fetching plan for %q on %s...\n", st.Name, dateStr)
-	}
+	fmt.Printf("Fetching plan %s for %q...\n", planRef, st.Name)
 
-	plan, err := resolvePlan(ctx, client, st.ID, dateStr, planIDStr)
+	plan, err := resolvePlan(ctx, client, st.ID, planRef)
 	if err != nil {
 		return err
 	}
@@ -483,6 +492,11 @@ func downloadPlanAttachments(ctx context.Context, client *pco.Client, serviceTyp
 	var wg sync.WaitGroup
 
 	for i, att := range attachments {
+		// Skip URL/link attachments — they have no downloadable file
+		if att.FileSize == 0 || filepath.Ext(att.Filename) == "" {
+			fmt.Printf("  Skipping %s (plan attachment is a URL/link, not a file)\n", att.Filename)
+			continue
+		}
 		wg.Add(1)
 		go func(i int, att pco.Attachment) {
 			defer wg.Done()

@@ -235,9 +235,10 @@ func NewImageItem(title string, sha256Hash, storedFilename *string) ServiceItem 
 	}
 }
 
-// NewPresentationItem creates a presentation service item (PowerPoint, PDF, etc.).
-func NewPresentationItem(title string, sha256Hash, storedFilename *string) ServiceItem {
-	processor := "Impress"
+// NewPresentationItem creates a presentation service item (PowerPoint, Keynote, PDF, etc.).
+// The processor should match an OpenLP presentation controller name (e.g. "Impress", "Powerpoint", "Keynote", "Pdf").
+// Image is set to "thumbnail.png" to avoid OpenLP bugs with "clapperboard" (QIcon crash) and "" (relative path crash).
+func NewPresentationItem(title string, sha256Hash, storedFilename *string, processor string) ServiceItem {
 	slideTitle := title
 	if storedFilename != nil {
 		slideTitle = *storedFilename
@@ -261,7 +262,7 @@ func NewPresentationItem(title string, sha256Hash, storedFilename *string) Servi
 		},
 		Data: []SlideData{{
 			Title: slideTitle,
-			Image: "clapperboard",
+			Image: "thumbnail.png",
 		}},
 	}
 }
