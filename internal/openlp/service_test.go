@@ -17,7 +17,7 @@ func TestWriteOSZ(t *testing.T) {
 					{Title: "First verse", RawSlide: "First verse\nSecond line", VerseTag: "V1"},
 					{Title: "Chorus", RawSlide: "Chorus line", VerseTag: "C1"},
 				}),
-			NewCustomItem("Announcements", "Some notes", []SlideData{
+			NewCustomItem("Announcements", "", "Some notes", []SlideData{
 				{Title: "Announcements", RawSlide: "Welcome everyone!", VerseTag: "1"},
 			}),
 			NewMediaItem("video.mp4", nil, nil),

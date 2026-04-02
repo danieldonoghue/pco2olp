@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/danield/pco2olp/internal/auth"
@@ -312,26 +313,39 @@ func runGenerate(ctx context.Context, serviceType, dateStr, planIDStr, output st
 		items = filtered
 	}
 
-	// Enrich items with arrangement lyrics where needed
-	for i := range items {
-		if items[i].ItemType == "song" && items[i].Arrangement != nil && items[i].Arrangement.Lyrics == "" {
-			arr, err := client.GetArrangement(ctx, items[i].Song.ID, items[i].Arrangement.ID)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: could not fetch lyrics for %q: %v\n", items[i].Title, err)
-				continue
-			}
-			items[i].Arrangement = arr
-		}
-	}
-
-	// Download media
+	// Initialize cache
 	mediaCache, err := cache.NewCache()
 	if err != nil {
 		return fmt.Errorf("initializing media cache: %w", err)
 	}
 
-	itemMedia := downloadItemMedia(ctx, client, st.ID, plan.ID, items, noCache, mediaCache)
-	planMedia := downloadPlanAttachments(ctx, client, st.ID, plan.ID, noCache, mediaCache)
+	// Run lyrics enrichment, item media downloads, and plan attachment downloads concurrently
+	var wg sync.WaitGroup
+	var itemMedia map[string]*cache.MediaFile
+	var planMedia []*cache.MediaFile
+
+	// Lyrics enrichment
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		enrichLyrics(ctx, client, items)
+	}()
+
+	// Item media downloads (parallel within)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		itemMedia = downloadItemMedia(ctx, client, st.ID, plan.ID, items, noCache, mediaCache)
+	}()
+
+	// Plan-level attachment downloads (parallel within)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		planMedia = downloadPlanAttachments(ctx, client, st.ID, plan.ID, noCache, mediaCache)
+	}()
+
+	wg.Wait()
 
 	serviceFile := convert.PlanToServiceFile(items, itemMedia, planMedia)
 
@@ -348,57 +362,104 @@ func runGenerate(ctx context.Context, serviceType, dateStr, planIDStr, output st
 	return nil
 }
 
-func downloadItemMedia(ctx context.Context, client *pco.Client, serviceTypeID, planID string, items []pco.Item, noCache bool, mediaCache *cache.Cache) map[string]*cache.MediaFile {
-	mediaMap := make(map[string]*cache.MediaFile)
-
-	for _, item := range items {
-		if item.ItemType != "media" {
-			continue
-		}
-
-		// Get the media resource for this item (provides media_type)
-		mediaList, err := client.GetItemMedia(ctx, serviceTypeID, planID, item.ID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: could not fetch media for %q: %v\n", item.Title, err)
-			continue
-		}
-
-		var pcoMediaType string
-		if len(mediaList) > 0 {
-			pcoMediaType = mediaList[0].MediaType
-		}
-
-		// Get attachments (the actual downloadable files)
-		attachments, err := client.GetItemAttachments(ctx, serviceTypeID, planID, item.ID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: could not fetch attachments for %q: %v\n", item.Title, err)
-			continue
-		}
-
-		if len(attachments) == 0 {
-			continue
-		}
-
-		att := attachments[0] // Use the first attachment
-		fmt.Printf("  Downloading %s...\n", att.Filename)
-
-		mf, err := mediaCache.EnsureCached(att.ID, att.UpdatedAt, att.Filename, att.ContentType, att.FileSize, noCache, func(w io.Writer) (int64, error) {
-			downloadURL, err := client.OpenAttachment(ctx, att.ID)
+func enrichLyrics(ctx context.Context, client *pco.Client, items []pco.Item) {
+	for i := range items {
+		if items[i].ItemType == "song" && items[i].Arrangement != nil && items[i].Arrangement.Lyrics == "" {
+			arr, err := client.GetArrangement(ctx, items[i].Song.ID, items[i].Arrangement.ID)
 			if err != nil {
-				return 0, err
+				fmt.Fprintf(os.Stderr, "Warning: could not fetch lyrics for %q: %v\n", items[i].Title, err)
+				continue
 			}
-			return client.DownloadFile(ctx, downloadURL, w)
-		})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: could not download %q: %v\n", att.Filename, err)
-			continue
+			items[i].Arrangement = arr
 		}
+	}
+}
 
-		mf.PCOMediaType = pcoMediaType
-		mediaMap[item.ID] = mf
+func downloadItemMedia(ctx context.Context, client *pco.Client, serviceTypeID, planID string, items []pco.Item, noCache bool, mediaCache *cache.Cache) map[string]*cache.MediaFile {
+	// Collect media items
+	var mediaItems []pco.Item
+	for _, item := range items {
+		if item.ItemType == "media" {
+			mediaItems = append(mediaItems, item)
+		}
+	}
+	if len(mediaItems) == 0 {
+		return nil
 	}
 
+	var mu sync.Mutex
+	mediaMap := make(map[string]*cache.MediaFile)
+	var wg sync.WaitGroup
+
+	// Download up to 4 media items concurrently
+	sem := make(chan struct{}, 4)
+
+	for _, item := range mediaItems {
+		wg.Add(1)
+		go func(item pco.Item) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			mf := downloadSingleItemMedia(ctx, client, serviceTypeID, planID, item, noCache, mediaCache)
+			if mf != nil {
+				mu.Lock()
+				mediaMap[item.ID] = mf
+				mu.Unlock()
+			}
+		}(item)
+	}
+	wg.Wait()
 	return mediaMap
+}
+
+func downloadSingleItemMedia(ctx context.Context, client *pco.Client, serviceTypeID, planID string, item pco.Item, noCache bool, mediaCache *cache.Cache) *cache.MediaFile {
+	// Get the media resource for this item (provides media_type)
+	mediaList, err := client.GetItemMedia(ctx, serviceTypeID, planID, item.ID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not fetch media for %q: %v\n", item.Title, err)
+		return nil
+	}
+
+	var pcoMediaType string
+	if len(mediaList) > 0 {
+		pcoMediaType = mediaList[0].MediaType
+	}
+
+	// Get attachments (the actual downloadable files)
+	attachments, err := client.GetItemAttachments(ctx, serviceTypeID, planID, item.ID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not fetch attachments for %q: %v\n", item.Title, err)
+		return nil
+	}
+
+	if len(attachments) == 0 {
+		return nil
+	}
+
+	att := attachments[0] // Use the first attachment
+	fmt.Printf("  Fetching %s...\n", att.Filename)
+
+	mf, err := mediaCache.EnsureCached(att.ID, att.UpdatedAt, att.Filename, att.ContentType, att.FileSize, noCache, func(w io.Writer) (int64, error) {
+		downloadURL, err := client.OpenAttachment(ctx, att.ID)
+		if err != nil {
+			return 0, err
+		}
+		return client.DownloadFile(ctx, downloadURL, w)
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not download %q: %v\n", att.Filename, err)
+		return nil
+	}
+
+	if mf.CacheHit {
+		fmt.Printf("  [cached] %s\n", att.Filename)
+	} else {
+		fmt.Printf("  [downloaded] %s\n", att.Filename)
+	}
+
+	mf.PCOMediaType = pcoMediaType
+	return mf
 }
 
 func downloadPlanAttachments(ctx context.Context, client *pco.Client, serviceTypeID, planID string, noCache bool, mediaCache *cache.Cache) []*cache.MediaFile {
@@ -412,25 +473,64 @@ func downloadPlanAttachments(ctx context.Context, client *pco.Client, serviceTyp
 		return nil
 	}
 
-	var planMedia []*cache.MediaFile
-	for _, att := range attachments {
-		fmt.Printf("  Downloading plan attachment %s...\n", att.Filename)
-
-		mf, err := mediaCache.EnsureCached(att.ID, att.UpdatedAt, att.Filename, att.ContentType, att.FileSize, noCache, func(w io.Writer) (int64, error) {
-			downloadURL, err := client.OpenAttachment(ctx, att.ID)
-			if err != nil {
-				return 0, err
-			}
-			return client.DownloadFile(ctx, downloadURL, w)
-		})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: could not download plan attachment %q: %v\n", att.Filename, err)
-			continue
-		}
-
-		planMedia = append(planMedia, mf)
+	type indexedResult struct {
+		index int
+		mf    *cache.MediaFile
 	}
 
+	results := make(chan indexedResult, len(attachments))
+	sem := make(chan struct{}, 4)
+	var wg sync.WaitGroup
+
+	for i, att := range attachments {
+		wg.Add(1)
+		go func(i int, att pco.Attachment) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			fmt.Printf("  Fetching %s (plan attachment)...\n", att.Filename)
+
+			mf, err := mediaCache.EnsureCached(att.ID, att.UpdatedAt, att.Filename, att.ContentType, att.FileSize, noCache, func(w io.Writer) (int64, error) {
+				downloadURL, err := client.OpenAttachment(ctx, att.ID)
+				if err != nil {
+					return 0, err
+				}
+				return client.DownloadFile(ctx, downloadURL, w)
+			})
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not download plan attachment %q: %v\n", att.Filename, err)
+				return
+			}
+
+			if mf.CacheHit {
+				fmt.Printf("  [cached] %s (plan attachment)\n", att.Filename)
+			} else {
+				fmt.Printf("  [downloaded] %s (plan attachment)\n", att.Filename)
+			}
+
+			results <- indexedResult{index: i, mf: mf}
+		}(i, att)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// Collect results, preserving original order
+	collected := make([]*cache.MediaFile, len(attachments))
+	for r := range results {
+		collected[r.index] = r.mf
+	}
+
+	// Filter out nils (failed downloads)
+	var planMedia []*cache.MediaFile
+	for _, mf := range collected {
+		if mf != nil {
+			planMedia = append(planMedia, mf)
+		}
+	}
 	return planMedia
 }
 

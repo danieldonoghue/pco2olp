@@ -169,3 +169,119 @@ func TestSongWithNoLyrics(t *testing.T) {
 		t.Error("song with no lyrics should still have at least one slide")
 	}
 }
+
+func TestCustomItemPrefersHTMLDetails(t *testing.T) {
+	items := []pco.Item{
+		{
+			ID:          "1",
+			Title:       "Confession",
+			ItemType:    "item",
+			Description: "A short description",
+			HTMLDetails: "<p>I confess before you, O Holy God</p><p>that I have sinned.</p>",
+		},
+	}
+
+	sf := PlanToServiceFile(items, nil, nil)
+	if len(sf.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(sf.Items))
+	}
+	slide := sf.Items[0].Data[0].RawSlide
+	if slide == "A short description" {
+		t.Error("should prefer HTMLDetails over Description")
+	}
+	if !contains(slide, "I confess before you") {
+		t.Errorf("slide should contain detail text, got %q", slide)
+	}
+}
+
+func TestCustomItemSlidesSplitOnDivider(t *testing.T) {
+	items := []pco.Item{
+		{
+			ID:       "1",
+			Title:    "Confession",
+			ItemType: "item",
+			HTMLDetails: "<p>Slide one text</p>" +
+				"[===]" +
+				"<p>Slide two text</p>" +
+				"[===]" +
+				"<p>Slide three text</p>",
+		},
+	}
+
+	sf := PlanToServiceFile(items, nil, nil)
+	if len(sf.Items[0].Data) != 3 {
+		t.Fatalf("expected 3 slides, got %d", len(sf.Items[0].Data))
+	}
+	if !contains(sf.Items[0].Data[0].RawSlide, "Slide one") {
+		t.Errorf("slide 1 = %q", sf.Items[0].Data[0].RawSlide)
+	}
+	if !contains(sf.Items[0].Data[2].RawSlide, "Slide three") {
+		t.Errorf("slide 3 = %q", sf.Items[0].Data[2].RawSlide)
+	}
+}
+
+func TestCustomItemFallsBackToDescription(t *testing.T) {
+	items := []pco.Item{
+		{
+			ID:          "1",
+			Title:       "Announcements",
+			ItemType:    "item",
+			Description: "Remember the potluck",
+		},
+	}
+
+	sf := PlanToServiceFile(items, nil, nil)
+	if sf.Items[0].Data[0].RawSlide != "Remember the potluck" {
+		t.Errorf("expected description as body, got %q", sf.Items[0].Data[0].RawSlide)
+	}
+}
+
+func TestCustomItemFallsBackToTitle(t *testing.T) {
+	items := []pco.Item{
+		{
+			ID:       "1",
+			Title:    "Offering",
+			ItemType: "item",
+		},
+	}
+
+	sf := PlanToServiceFile(items, nil, nil)
+	if sf.Items[0].Data[0].RawSlide != "Offering" {
+		t.Errorf("expected title as fallback, got %q", sf.Items[0].Data[0].RawSlide)
+	}
+}
+
+func TestHTMLToOpenLP(t *testing.T) {
+	input := "<p>Hello <b>world</b></p><br/><p>&amp; goodbye</p>"
+	got := htmlToOpenLP(input)
+	if !contains(got, "Hello {st}world{/st}") {
+		t.Errorf("expected bold converted to OpenLP tags, got %q", got)
+	}
+	if !contains(got, "& goodbye") {
+		t.Errorf("expected '& goodbye', got %q", got)
+	}
+}
+
+func TestHTMLToOpenLPItalics(t *testing.T) {
+	input := "<p>Say <i>Amen</i> and <em>Hallelujah</em></p>"
+	got := htmlToOpenLP(input)
+	if !contains(got, "{it}Amen{/it}") {
+		t.Errorf("expected italic converted, got %q", got)
+	}
+	if !contains(got, "{it}Hallelujah{/it}") {
+		t.Errorf("expected em converted, got %q", got)
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && containsStr(s, substr)
+}
+
+func containsStr(s, sub string) bool {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
+}

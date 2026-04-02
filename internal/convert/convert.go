@@ -1,6 +1,8 @@
 package convert
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -141,25 +143,150 @@ func headerToServiceItem(item pco.Item) *openlp.ServiceItem {
 		VerseTag: "1",
 	}}
 
-	si := openlp.NewCustomItem(item.Title, "", slides)
+	si := openlp.NewCustomItem(item.Title, "", "", slides)
 	return &si
 }
 
 func customToServiceItem(item pco.Item) *openlp.ServiceItem {
-	content := item.Title
-	if item.Description != "" {
+	// Prefer HTMLDetails (the "detail" section in PCO) over Description.
+	// HTMLDetails contains the actual slide content; Description is a short summary.
+	content := ""
+	if item.HTMLDetails != "" {
+		content = htmlToOpenLP(item.HTMLDetails)
+	} else if item.Description != "" {
 		content = item.Description
 	}
 
-	slides := []openlp.SlideData{{
-		Title:    truncate(content, 30),
-		RawSlide: content,
-		VerseTag: "1",
-	}}
+	// Split on [===] for multi-slide items
+	var slides []openlp.SlideData
+	if content != "" {
+		pages := splitSlides(content)
+		for i, page := range pages {
+			page = strings.TrimSpace(page)
+			if page == "" {
+				continue
+			}
+			slides = append(slides, openlp.SlideData{
+				Title:    truncate(page, 30),
+				RawSlide: page,
+				VerseTag: fmt.Sprintf("%d", i+1),
+			})
+		}
+	}
+
+	// Fallback: single slide with the title
+	if len(slides) == 0 {
+		slides = []openlp.SlideData{{
+			Title:    item.Title,
+			RawSlide: item.Title,
+			VerseTag: "1",
+		}}
+	}
 
 	notes := collectNotes(item)
-	si := openlp.NewCustomItem(item.Title, notes, slides)
+	credits := contentFingerprint(slides)
+	si := openlp.NewCustomItem(item.Title, credits, notes, slides)
 	return &si
+}
+
+// splitSlides splits text on [===] slide dividers (OpenLP convention).
+// The divider is expected on its own line, but we handle it with or without surrounding newlines.
+func splitSlides(text string) []string {
+	// OpenLP uses \n[===]\n as the canonical divider
+	if strings.Contains(text, "\n[===]\n") {
+		return strings.Split(text, "\n[===]\n")
+	}
+	// Fall back to splitting on [===] with optional surrounding whitespace
+	if strings.Contains(text, "[===]") {
+		return strings.Split(text, "[===]")
+	}
+	return []string{text}
+}
+
+// htmlToOpenLP converts PCO HTML details to OpenLP formatted text.
+// Converts HTML formatting to OpenLP display tags where possible,
+// and strips remaining HTML.
+func htmlToOpenLP(html string) string {
+	// Convert HTML formatting to OpenLP display tags
+	// Bold: <b>, <strong> → {st}{/st}
+	for _, tag := range []string{"b", "strong"} {
+		html = replaceHTMLTag(html, tag, "{st}", "{/st}")
+	}
+	// Italic: <i>, <em> → {it}{/it}
+	for _, tag := range []string{"i", "em"} {
+		html = replaceHTMLTag(html, tag, "{it}", "{/it}")
+	}
+	// Underline: <u> → {u}{/u}
+	html = replaceHTMLTag(html, "u", "{u}", "{/u}")
+
+	// Replace <br>, <br/>, <br /> with newlines
+	for _, br := range []string{"<br>", "<br/>", "<br />", "<BR>", "<BR/>", "<BR />"} {
+		html = strings.ReplaceAll(html, br, "\n")
+	}
+	// Replace <p> and </p> with newlines
+	html = replaceTagInsensitive(html, "<p>", "")
+	html = replaceTagInsensitive(html, "</p>", "\n")
+
+	// Strip remaining HTML tags
+	var result strings.Builder
+	inTag := false
+	for _, r := range html {
+		if r == '<' {
+			inTag = true
+			continue
+		}
+		if r == '>' {
+			inTag = false
+			continue
+		}
+		if !inTag {
+			result.WriteRune(r)
+		}
+	}
+
+	// Decode common HTML entities
+	s := result.String()
+	s = strings.ReplaceAll(s, "&amp;", "&")
+	s = strings.ReplaceAll(s, "&lt;", "<")
+	s = strings.ReplaceAll(s, "&gt;", ">")
+	s = strings.ReplaceAll(s, "&quot;", "\"")
+	s = strings.ReplaceAll(s, "&#39;", "'")
+	s = strings.ReplaceAll(s, "&nbsp;", " ")
+
+	// Clean up excessive blank lines
+	lines := strings.Split(s, "\n")
+	var cleaned []string
+	blankCount := 0
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			blankCount++
+			if blankCount <= 1 {
+				cleaned = append(cleaned, "")
+			}
+		} else {
+			blankCount = 0
+			cleaned = append(cleaned, trimmed)
+		}
+	}
+	return strings.TrimSpace(strings.Join(cleaned, "\n"))
+}
+
+// replaceHTMLTag replaces <tag>...</tag> with OpenLP formatting tags (case-insensitive).
+func replaceHTMLTag(html, tag, openTag, closeTag string) string {
+	// Handle both cases
+	for _, t := range []string{strings.ToLower(tag), strings.ToUpper(tag)} {
+		html = strings.ReplaceAll(html, "<"+t+">", openTag)
+		html = strings.ReplaceAll(html, "</"+t+">", closeTag)
+	}
+	return html
+}
+
+// replaceTagInsensitive replaces an HTML tag string case-insensitively.
+func replaceTagInsensitive(html, tag, replacement string) string {
+	html = strings.ReplaceAll(html, tag, replacement)
+	html = strings.ReplaceAll(html, strings.ToUpper(tag), replacement)
+	return html
 }
 
 func mediaToServiceItem(item pco.Item, mf *cache.MediaFile) *openlp.ServiceItem {
@@ -170,7 +297,7 @@ func mediaToServiceItem(item pco.Item, mf *cache.MediaFile) *openlp.ServiceItem 
 			RawSlide: item.Title,
 			VerseTag: "1",
 		}}
-		si := openlp.NewCustomItem(item.Title, "[Media placeholder]", slides)
+		si := openlp.NewCustomItem(item.Title, "", "[Media placeholder]", slides)
 		return &si
 	}
 
@@ -297,4 +424,14 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n]
+}
+
+// contentFingerprint returns a short hash of the slide content.
+// Used as credits in OpenLP to distinguish items with the same title but different content.
+func contentFingerprint(slides []openlp.SlideData) string {
+	h := sha256.New()
+	for _, s := range slides {
+		h.Write([]byte(s.RawSlide))
+	}
+	return "#" + hex.EncodeToString(h.Sum(nil))[:6]
 }

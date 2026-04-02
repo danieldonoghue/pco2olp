@@ -77,10 +77,17 @@ type ItemHeader struct {
 }
 
 // SlideData represents a single slide within a service item.
+// Text items (songs/custom) use Title, RawSlide, VerseTag.
+// Media/Image/Presentation items use Title, Image, Path, DisplayTitle, Notes, FileHash.
 type SlideData struct {
-	Title    string `json:"title"`
-	RawSlide string `json:"raw_slide"`
-	VerseTag string `json:"verseTag"`
+	Title        string `json:"title"`
+	RawSlide     string `json:"raw_slide"`
+	VerseTag     string `json:"verseTag"`
+	Image        string `json:"image"`
+	Path         string `json:"path"`
+	DisplayTitle string `json:"display_title"`
+	Notes        string `json:"notes"`
+	FileHash     string `json:"file_hash"`
 }
 
 // SongHeaderData is the plugin-specific data for a song item header.
@@ -135,14 +142,19 @@ func NewSongItem(title, author, copyright, ccli, xmlVersion string, slides []Sli
 }
 
 // NewCustomItem creates a custom slide service item.
-func NewCustomItem(title, notes string, slides []SlideData) ServiceItem {
+// Credits appear in the footer and are used by OpenLP to identify unique content.
+func NewCustomItem(title, credits, notes string, slides []SlideData) ServiceItem {
+	footer := title
+	if credits != "" {
+		footer = title + " " + credits
+	}
 	return ServiceItem{
 		Header: ItemHeader{
 			Name:            "custom",
 			Plugin:          "custom",
 			Theme:           nil,
 			Title:           title,
-			Footer:          []string{title},
+			Footer:          []string{footer},
 			Type:            TypeText,
 			Audit:           "",
 			Notes:           notes,
@@ -162,6 +174,10 @@ func NewCustomItem(title, notes string, slides []SlideData) ServiceItem {
 func NewMediaItem(title string, sha256Hash, storedFilename *string) ServiceItem {
 	processor := "qt6"
 	theme := -1
+	slideTitle := title
+	if storedFilename != nil {
+		slideTitle = *storedFilename
+	}
 	return ServiceItem{
 		Header: ItemHeader{
 			Name:            "media",
@@ -180,14 +196,22 @@ func NewMediaItem(title string, sha256Hash, storedFilename *string) ServiceItem 
 			StoredFilename:  storedFilename,
 		},
 		Data: []SlideData{{
-			Title:    title,
-			RawSlide: title,
+			Title: slideTitle,
+			Image: "clapperboard",
 		}},
 	}
 }
 
 // NewImageItem creates an image service item.
 func NewImageItem(title string, sha256Hash, storedFilename *string) ServiceItem {
+	var fileHash string
+	slideTitle := title
+	if sha256Hash != nil {
+		fileHash = *sha256Hash
+	}
+	if storedFilename != nil {
+		slideTitle = *storedFilename
+	}
 	return ServiceItem{
 		Header: ItemHeader{
 			Name:            "images",
@@ -205,7 +229,8 @@ func NewImageItem(title string, sha256Hash, storedFilename *string) ServiceItem 
 			StoredFilename:  storedFilename,
 		},
 		Data: []SlideData{{
-			Title: title,
+			Title:    slideTitle,
+			FileHash: fileHash,
 		}},
 	}
 }
@@ -213,6 +238,10 @@ func NewImageItem(title string, sha256Hash, storedFilename *string) ServiceItem 
 // NewPresentationItem creates a presentation service item (PowerPoint, PDF, etc.).
 func NewPresentationItem(title string, sha256Hash, storedFilename *string) ServiceItem {
 	processor := "Impress"
+	slideTitle := title
+	if storedFilename != nil {
+		slideTitle = *storedFilename
+	}
 	return ServiceItem{
 		Header: ItemHeader{
 			Name:            "presentations",
@@ -231,7 +260,8 @@ func NewPresentationItem(title string, sha256Hash, storedFilename *string) Servi
 			StoredFilename:  storedFilename,
 		},
 		Data: []SlideData{{
-			Title: title,
+			Title: slideTitle,
+			Image: "clapperboard",
 		}},
 	}
 }

@@ -198,7 +198,9 @@ func (c *Client) doPost(ctx context.Context, reqURL string) ([]byte, error) {
 	return nil, fmt.Errorf("API POST failed after 3 retries (rate limited)")
 }
 
-// DownloadFile streams a file from the given URL to w using the authenticated HTTP client.
+// DownloadFile streams a file from the given URL to w.
+// Uses a plain HTTP client (no OAuth headers) since download URLs are typically
+// pre-signed CDN/S3 URLs that reject extra Authorization headers.
 func (c *Client) DownloadFile(ctx context.Context, fileURL string, w io.Writer) (int64, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", fileURL, nil)
 	if err != nil {
@@ -206,13 +208,15 @@ func (c *Client) DownloadFile(ctx context.Context, fileURL string, w io.Writer) 
 	}
 	req.Header.Set("User-Agent", userAgent)
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return 0, fmt.Errorf("download request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		c.logf("download failed: HTTP %d, body: %s", resp.StatusCode, string(body))
 		return 0, fmt.Errorf("download failed (HTTP %d)", resp.StatusCode)
 	}
 

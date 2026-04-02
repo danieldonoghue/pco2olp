@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -20,10 +21,12 @@ type MediaFile struct {
 	ContentType      string
 	FileSize         int64
 	PCOMediaType     string // PCO media_type field (e.g., "video", "image")
+	CacheHit         bool   // True if served from cache without downloading
 }
 
 // Cache manages downloaded media files.
 type Cache struct {
+	mu        sync.Mutex
 	dir       string
 	index     *Index
 	indexPath string
@@ -80,7 +83,10 @@ func (c *Cache) EnsureCached(
 ) (*MediaFile, error) {
 	// Check cache (unless force download)
 	if !noCache {
-		if entry := c.index.Lookup(attachmentID, updatedAt); entry != nil {
+		c.mu.Lock()
+		entry := c.index.Lookup(attachmentID, updatedAt)
+		c.mu.Unlock()
+		if entry != nil {
 			localPath := filepath.Join(c.dir, entry.SHA256+extFromFilename(entry.Filename))
 			if _, err := os.Stat(localPath); err == nil {
 				return &MediaFile{
@@ -90,6 +96,7 @@ func (c *Cache) EnsureCached(
 					Extension:        extFromFilename(entry.Filename),
 					ContentType:      entry.ContentType,
 					FileSize:         entry.FileSize,
+					CacheHit:         true,
 				}, nil
 			}
 			// File missing from disk — re-download
@@ -126,7 +133,8 @@ func (c *Cache) EnsureCached(
 		return nil, fmt.Errorf("storing cached file: %w", err)
 	}
 
-	// Update index
+	// Update index (thread-safe)
+	c.mu.Lock()
 	c.index.Set(attachmentID, &IndexEntry{
 		AttachmentID: attachmentID,
 		PCOUpdatedAt: updatedAt,
@@ -139,6 +147,7 @@ func (c *Cache) EnsureCached(
 	if err := c.index.Save(c.indexPath); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: could not save cache index: %v\n", err)
 	}
+	c.mu.Unlock()
 
 	return &MediaFile{
 		OriginalFilename: filename,
