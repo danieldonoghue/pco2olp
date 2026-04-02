@@ -30,6 +30,7 @@ func main() {
 	includeMedia := flag.Bool("include-media", false, "Include media attachments")
 	debug := flag.Bool("debug", false, "Enable debug logging")
 	showVersion := flag.Bool("version", false, "Show version information")
+	allPlans := flag.Bool("all", false, "Show all plans (default: recent and upcoming only)")
 	cleanCache := flag.Bool("clean-cache", false, "Clean the media cache")
 	cacheInfo := flag.Bool("cache-info", false, "Show cache information")
 
@@ -70,7 +71,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: --service-type is required with --list-plans\n")
 			os.Exit(1)
 		}
-		if err := runListPlans(ctx, *serviceType, *debug); err != nil {
+		if err := runListPlans(ctx, *serviceType, *allPlans, *debug); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -134,7 +135,7 @@ func runListServiceTypes(ctx context.Context, debug bool) error {
 	return nil
 }
 
-func runListPlans(ctx context.Context, serviceType string, debug bool) error {
+func runListPlans(ctx context.Context, serviceType string, all bool, debug bool) error {
 	client, err := authenticate(ctx, debug)
 	if err != nil {
 		return err
@@ -145,26 +146,55 @@ func runListPlans(ctx context.Context, serviceType string, debug bool) error {
 		return err
 	}
 
-	plans, err := client.ListPlans(ctx, st.ID, pco.ListPlansOpts{})
+	opts := pco.ListPlansOpts{}
+	if !all {
+		// Default: show plans from 4 weeks ago onward
+		cutoff := time.Now().AddDate(0, 0, -28)
+		opts.AfterDate = &cutoff
+	}
+
+	plans, err := client.ListPlans(ctx, st.ID, opts)
 	if err != nil {
 		return fmt.Errorf("fetching plans: %w", err)
 	}
 
 	if len(plans) == 0 {
-		fmt.Printf("No plans found for %q\n", st.Name)
+		if all {
+			fmt.Printf("No plans found for %q\n", st.Name)
+		} else {
+			fmt.Printf("No recent plans found for %q (use --all to show all plans)\n", st.Name)
+		}
 		return nil
 	}
 
-	fmt.Printf("Plans for %q:\n\n", st.Name)
-	fmt.Printf("%-10s  %-12s  %-30s  %s\n", "ID", "Date", "Title", "Series")
-	fmt.Printf("%-10s  %-12s  %-30s  %s\n", "---", "----", "-----", "------")
-	for _, p := range plans {
+	fmt.Printf("Plans for %q", st.Name)
+	if !all {
+		fmt.Printf(" (recent & upcoming, use --all for full history)")
+	}
+	fmt.Printf(":\n\n")
+	// Find the next upcoming plan (first plan on or after today)
+	today := time.Now().Truncate(24 * time.Hour)
+	nextIdx := -1
+	for i, p := range plans {
+		if !p.SortDate.Before(today) {
+			nextIdx = i
+			break
+		}
+	}
+
+	fmt.Printf("     %-10s  %-12s  %-30s  %s\n", "ID", "Date", "Title", "Series")
+	fmt.Printf("     %-10s  %-12s  %-30s  %s\n", "---", "----", "-----", "------")
+	for i, p := range plans {
 		series := p.SeriesTitle
 		if series == "" {
 			series = "-"
 		}
 		dateStr := p.SortDate.Format("2006-01-02")
-		fmt.Printf("%-10s  %-12s  %-30s  %s\n", p.ID, dateStr, p.Title, series)
+		marker := "    "
+		if i == nextIdx {
+			marker = " >> "
+		}
+		fmt.Printf("%s %-10s  %-12s  %-30s  %s\n", marker, p.ID, dateStr, p.Title, series)
 	}
 	return nil
 }
