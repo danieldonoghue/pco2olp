@@ -18,13 +18,14 @@ A single-binary CLI tool that authenticates with the PCO API, fetches your servi
 
 1. Go to https://api.planningcenteronline.com/oauth/applications
 2. Create a new application (requires Organization Administrator)
-3. Set the redirect URI to `http://localhost:0/callback`
-4. Note the **Client ID**
+3. Set the redirect URI to `http://localhost:11019/callback`
+4. Note the **Client ID** and **Secret**
 
 ### 2. Set Up
 
 ```bash
 export PCO_CLIENT_ID="your-client-id-here"
+export PCO_CLIENT_SECRET="your-client-secret-here"
 ```
 
 ### 3. Use
@@ -67,7 +68,7 @@ ls dist/
 
 - Go 1.21+ (build only)
 - A Planning Center Online account with Services access
-- PCO OAuth application (Client ID)
+- PCO OAuth application (Client ID and Secret)
 
 ## How It Works
 

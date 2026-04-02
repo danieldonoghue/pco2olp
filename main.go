@@ -33,6 +33,17 @@ func main() {
 	cleanCache := flag.Bool("clean-cache", false, "Clean the media cache")
 	cacheInfo := flag.Bool("cache-info", false, "Show cache information")
 
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: pco2olp [flags]\n\nFlags:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nEnvironment variables:\n")
+		fmt.Fprintf(os.Stderr, "  PCO_CLIENT_ID      OAuth Client ID (required)\n")
+		fmt.Fprintf(os.Stderr, "  PCO_CLIENT_SECRET   OAuth Client Secret (required)\n")
+		fmt.Fprintf(os.Stderr, "\n  Register an OAuth application at:\n")
+		fmt.Fprintf(os.Stderr, "  https://api.planningcenteronline.com/oauth/applications\n")
+		fmt.Fprintf(os.Stderr, "  Set the redirect URI to http://localhost:11019/callback\n")
+	}
+
 	flag.Parse()
 
 	// Suppress unused variable warnings for Phase 2 flags

@@ -34,9 +34,11 @@ func NewAuthenticator(tokenStore *TokenStore) *Authenticator {
 	if clientID == "" {
 		clientID = defaultClientID
 	}
+	clientSecret := os.Getenv("PCO_CLIENT_SECRET")
 	return &Authenticator{
 		oauthConfig: &oauth2.Config{
-			ClientID: clientID,
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
 			Endpoint: oauth2.Endpoint{
 				AuthURL:  pcoAuthURL,
 				TokenURL: pcoTokenURL,
@@ -53,7 +55,7 @@ func (a *Authenticator) TokenSource(ctx context.Context) (oauth2.TokenSource, er
 	if a.oauthConfig.ClientID == "" {
 		return nil, fmt.Errorf("PCO_CLIENT_ID environment variable is not set.\n" +
 			"Register an OAuth app at https://api.planningcenteronline.com/oauth/applications\n" +
-			"Then set PCO_CLIENT_ID to your application's Client ID")
+			"Then set PCO_CLIENT_ID and PCO_CLIENT_SECRET to your application's credentials")
 	}
 
 	tok, err := a.tokenStore.Load()
@@ -124,13 +126,13 @@ func (a *Authenticator) authenticate(ctx context.Context) (*oauth2.Token, error)
 		return nil, fmt.Errorf("generating state: %w", err)
 	}
 
-	// Start local callback server on a random port
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	// Start local callback server on a fixed port (must match PCO app redirect URI)
+	const callbackPort = 11019
+	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", callbackPort))
 	if err != nil {
-		return nil, fmt.Errorf("starting callback server: %w", err)
+		return nil, fmt.Errorf("starting callback server on port %d (is another instance running?): %w", callbackPort, err)
 	}
-	port := listener.Addr().(*net.TCPAddr).Port
-	a.oauthConfig.RedirectURL = fmt.Sprintf("http://localhost:%d/callback", port)
+	a.oauthConfig.RedirectURL = fmt.Sprintf("http://localhost:%d/callback", callbackPort)
 
 	codeCh := make(chan string, 1)
 	errCh := make(chan error, 1)
