@@ -1,0 +1,8 @@
+/pco2olp
+/dist/
+*.osz
+*.oszl
+tokens.json
+.DS_Store
+.claude/
+CLAUDE.md
