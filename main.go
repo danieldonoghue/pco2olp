@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
@@ -16,6 +18,7 @@ import (
 	"github.com/danield/pco2olp/internal/cache"
 	"github.com/danield/pco2olp/internal/convert"
 	"github.com/danield/pco2olp/internal/pco"
+	"github.com/danield/pco2olp/internal/slides"
 )
 
 var (
@@ -288,6 +291,8 @@ func runGenerate(ctx context.Context, serviceType, planRef, output string, noHea
 
 	fmt.Printf("Fetching plan %s for %q...\n", planRef, st.Name)
 
+	requestPermissions()
+
 	plan, err := resolvePlan(ctx, client, st.ID, planRef)
 	if err != nil {
 		return err
@@ -355,6 +360,15 @@ func runGenerate(ctx context.Context, serviceType, planRef, output string, noHea
 	}()
 
 	wg.Wait()
+
+	// Convert presentation files to slide images if tools are available
+	slidesTempDir, err := os.MkdirTemp("", "pco2olp-slides-*")
+	if err != nil {
+		return fmt.Errorf("creating slides temp dir: %w", err)
+	}
+	defer os.RemoveAll(slidesTempDir)
+
+	convertSlides(itemMedia, planMedia, slidesTempDir)
 
 	serviceFile := convert.PlanToServiceFile(items, itemMedia, planMedia)
 
@@ -546,6 +560,87 @@ func downloadPlanAttachments(ctx context.Context, client *pco.Client, serviceTyp
 		}
 	}
 	return planMedia
+}
+
+func convertSlides(itemMedia map[string]*cache.MediaFile, planMedia []*cache.MediaFile, tempDir string) {
+	var allMedia []*cache.MediaFile
+	for _, mf := range itemMedia {
+		if mf != nil && isPresentationFile(mf) {
+			allMedia = append(allMedia, mf)
+		}
+	}
+	for _, mf := range planMedia {
+		if mf != nil && isPresentationFile(mf) {
+			allMedia = append(allMedia, mf)
+		}
+	}
+	if len(allMedia) == 0 {
+		return
+	}
+
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 2)
+
+	for _, mf := range allMedia {
+		wg.Add(1)
+		go func(mf *cache.MediaFile) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			slideDir := filepath.Join(tempDir, mf.SHA256)
+			if err := os.MkdirAll(slideDir, 0700); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not create slide dir for %q: %v\n", mf.OriginalFilename, err)
+				return
+			}
+			fmt.Printf("  Converting %s to slides...\n", mf.OriginalFilename)
+			pngs, err := slides.ConvertToPNGs(mf.LocalPath, slideDir)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not convert %q to slides: %v\n", mf.OriginalFilename, err)
+				return
+			}
+			if len(pngs) == 0 {
+				fmt.Fprintf(os.Stderr, "  No slide converter available for %s — using media item fallback\n", mf.Extension)
+				return
+			}
+			converted := make([]cache.Slide, 0, len(pngs))
+			for _, path := range pngs {
+				hash, err := sha256File(path)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: could not hash slide %q: %v\n", path, err)
+					continue
+				}
+				converted = append(converted, cache.Slide{LocalPath: path, SHA256: hash})
+			}
+			mf.Slides = converted
+			fmt.Printf("  Converted %s (%d slides)\n", mf.OriginalFilename, len(mf.Slides))
+		}(mf)
+	}
+	wg.Wait()
+}
+
+// isPresentationFile returns true if the media file should be converted to slides.
+// Respects PCO's media type when present: audio/video/image are never presentations.
+// Falls back to file extension for plan attachments (which have no PCO media type).
+func isPresentationFile(mf *cache.MediaFile) bool {
+	switch mf.PCOMediaType {
+	case "video", "audio", "image", "background_image":
+		return false
+	}
+	return slides.IsPresentationType(mf.Extension)
+}
+
+func sha256File(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func runCleanCache() error {

@@ -26,13 +26,7 @@ func PlanToServiceFile(items []pco.Item, itemMedia map[string]*cache.MediaFile, 
 		si := itemToServiceItem(item, mf)
 		if si != nil {
 			sf.Items = append(sf.Items, *si)
-			if mf != nil {
-				storedName := mf.SHA256 + mf.Extension
-				sf.MediaFiles = append(sf.MediaFiles, openlp.EmbeddedFile{
-					StoredName: storedName,
-					LocalPath:  mf.LocalPath,
-				})
-			}
+			sf.MediaFiles = append(sf.MediaFiles, embeddedFiles(mf)...)
 		}
 	}
 
@@ -41,11 +35,7 @@ func PlanToServiceFile(items []pco.Item, itemMedia map[string]*cache.MediaFile, 
 		si := attachmentToServiceItem(mf)
 		if si != nil {
 			sf.Items = append(sf.Items, *si)
-			storedName := mf.SHA256 + mf.Extension
-			sf.MediaFiles = append(sf.MediaFiles, openlp.EmbeddedFile{
-				StoredName: storedName,
-				LocalPath:  mf.LocalPath,
-			})
+			sf.MediaFiles = append(sf.MediaFiles, embeddedFiles(mf)...)
 		}
 	}
 
@@ -304,6 +294,11 @@ func mediaToServiceItem(item pco.Item, mf *cache.MediaFile) *openlp.ServiceItem 
 
 	storedName := mf.SHA256 + mf.Extension
 	hash := mf.SHA256
+
+	if len(mf.Slides) > 0 {
+		si := slidesToImageGroup(item.Title, mf.Slides)
+		return &si
+	}
 	return newMediaServiceItem(item.Title, mf.PCOMediaType, mf.ContentType, &hash, &storedName)
 }
 
@@ -312,18 +307,60 @@ func attachmentToServiceItem(mf *cache.MediaFile) *openlp.ServiceItem {
 	title := "ATTACHMENT - " + mf.OriginalFilename
 	storedName := mf.SHA256 + mf.Extension
 	hash := mf.SHA256
+
+	if len(mf.Slides) > 0 {
+		si := slidesToImageGroup(title, mf.Slides)
+		return &si
+	}
 	return newMediaServiceItem(title, mf.PCOMediaType, mf.ContentType, &hash, &storedName)
 }
 
+// slidesToImageGroup creates an image group service item from converted slide PNGs.
+func slidesToImageGroup(title string, slides []cache.Slide) openlp.ServiceItem {
+	refs := make([]openlp.SlideRef, len(slides))
+	for i, s := range slides {
+		refs[i] = openlp.SlideRef{
+			SHA256:     s.SHA256,
+			StoredName: s.SHA256 + ".png",
+		}
+	}
+	return openlp.NewImageGroupItem(title, refs)
+}
+
+// embeddedFiles returns the EmbeddedFile entries for a MediaFile.
+// If slides are present, returns one entry per slide PNG; otherwise one entry for the source file.
+func embeddedFiles(mf *cache.MediaFile) []openlp.EmbeddedFile {
+	if mf == nil {
+		return nil
+	}
+	if len(mf.Slides) > 0 {
+		files := make([]openlp.EmbeddedFile, len(mf.Slides))
+		for i, s := range mf.Slides {
+			files[i] = openlp.EmbeddedFile{
+				StoredName: s.SHA256 + ".png",
+				LocalPath:  s.LocalPath,
+			}
+		}
+		return files
+	}
+	return []openlp.EmbeddedFile{{
+		StoredName: mf.SHA256 + mf.Extension,
+		LocalPath:  mf.LocalPath,
+	}}
+}
+
 // newMediaServiceItem creates the correct OpenLP service item based on media type.
+// PDFs use the presentations plugin (OpenLP renders them internally — no external app needed).
+// Keynote and PowerPoint use the media plugin: OpenLP's native controllers have AppleScript
+// bugs and macOS App Store sandbox restrictions that prevent loading files from the service
+// archive directory.
 func newMediaServiceItem(title, pcoMediaType, contentType string, hash, storedName *string) *openlp.ServiceItem {
 	switch {
 	case isImageType(pcoMediaType, contentType):
 		si := openlp.NewImageItem(title, hash, storedName)
 		return &si
-	case isPresentationType(pcoMediaType, contentType):
-		processor := presentationProcessor(storedName)
-		si := openlp.NewPresentationItem(title, hash, storedName, processor)
+	case isPDFType(contentType, storedName):
+		si := openlp.NewPresentationItem(title, hash, storedName, "Pdf")
 		return &si
 	default:
 		si := openlp.NewMediaItem(title, hash, storedName)
@@ -339,41 +376,14 @@ func isImageType(pcoMediaType, contentType string) bool {
 	return strings.HasPrefix(contentType, "image/")
 }
 
-func isPresentationType(pcoMediaType, contentType string) bool {
-	switch pcoMediaType {
-	case "powerpoint", "document", "curriculum":
+func isPDFType(contentType string, storedName *string) bool {
+	if contentType == "application/pdf" {
 		return true
 	}
-	switch {
-	case strings.Contains(contentType, "presentation"),
-		strings.Contains(contentType, "powerpoint"),
-		strings.Contains(contentType, "keynote"),
-		contentType == "application/pdf":
+	if storedName != nil && strings.ToLower(filepath.Ext(*storedName)) == ".pdf" {
 		return true
 	}
 	return false
-}
-
-// presentationProcessor returns the OpenLP controller name for a presentation file.
-// OpenLP's MessageListener.startup() falls back to find_controller_by_type if the
-// saved processor isn't available, so "automatic" is a safe default.
-func presentationProcessor(storedName *string) string {
-	if storedName == nil {
-		return "automatic"
-	}
-	ext := strings.ToLower(filepath.Ext(*storedName))
-	switch ext {
-	case ".pdf":
-		return "Pdf"
-	case ".key":
-		return "Keynote"
-	case ".ppt", ".pps", ".pptx", ".ppsx", ".pptm":
-		return "Powerpoint"
-	case ".odp":
-		return "Impress"
-	default:
-		return "automatic"
-	}
 }
 
 func collectNotes(item pco.Item) string {

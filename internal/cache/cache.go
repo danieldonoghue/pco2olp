@@ -12,6 +12,12 @@ import (
 	"time"
 )
 
+// Slide represents a single converted slide PNG, ready to embed in an .osz image group.
+type Slide struct {
+	LocalPath string // Absolute path to the PNG file (temp dir, valid for this run)
+	SHA256    string // Hex-encoded SHA256 hash of the PNG
+}
+
 // MediaFile represents a downloaded and cached media file ready for .osz embedding.
 type MediaFile struct {
 	OriginalFilename string
@@ -22,6 +28,7 @@ type MediaFile struct {
 	FileSize         int64
 	PCOMediaType     string // PCO media_type field (e.g., "video", "image")
 	CacheHit         bool   // True if served from cache without downloading
+	Slides           []Slide // Converted slide PNGs (populated at generation time, not cached)
 }
 
 // Cache manages downloaded media files.

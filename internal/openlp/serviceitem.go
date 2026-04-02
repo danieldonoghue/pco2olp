@@ -235,6 +235,41 @@ func NewImageItem(title string, sha256Hash, storedFilename *string) ServiceItem 
 	}
 }
 
+// NewImageGroupItem creates an image service item from multiple slide PNGs.
+// Each SlideRef provides the SHA256 hash and stored filename for one slide.
+// This is used when a presentation is pre-converted to PNG images.
+func NewImageGroupItem(title string, slides []SlideRef) ServiceItem {
+	var data []SlideData
+	for _, s := range slides {
+		data = append(data, SlideData{
+			Title:    s.StoredName,
+			FileHash: s.SHA256,
+		})
+	}
+	return ServiceItem{
+		Header: ItemHeader{
+			Name:            "images",
+			Plugin:          "images",
+			Theme:           nil,
+			Title:           title,
+			Footer:          []string{},
+			Type:            TypeImage,
+			Capabilities:    ImageCapabilities,
+			Search:          title,
+			Data:            "",
+			BackgroundAudio: []string{},
+			Metadata:        []any{},
+		},
+		Data: data,
+	}
+}
+
+// SlideRef is a reference to a single slide PNG embedded in the .osz archive.
+type SlideRef struct {
+	SHA256     string
+	StoredName string // "{sha256}.png"
+}
+
 // NewPresentationItem creates a presentation service item (PowerPoint, Keynote, PDF, etc.).
 // The processor should match an OpenLP presentation controller name (e.g. "Impress", "Powerpoint", "Keynote", "Pdf").
 // Image is set to "thumbnail.png" to avoid OpenLP bugs with "clapperboard" (QIcon crash) and "" (relative path crash).
