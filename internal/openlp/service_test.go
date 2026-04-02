@@ -20,7 +20,7 @@ func TestWriteOSZ(t *testing.T) {
 			NewCustomItem("Announcements", "Some notes", []SlideData{
 				{Title: "Announcements", RawSlide: "Welcome everyone!", VerseTag: "1"},
 			}),
-			NewMediaItem("video.mp4"),
+			NewMediaItem("video.mp4", nil, nil),
 		},
 	}
 
@@ -89,5 +89,50 @@ func TestWriteOSZ(t *testing.T) {
 	}
 	if fi.Size() == 0 {
 		t.Fatal("output file is empty")
+	}
+}
+
+func TestWriteOSZWithMediaFiles(t *testing.T) {
+	// Create a fake media file on disk
+	dir := t.TempDir()
+	mediaPath := filepath.Join(dir, "abc123.mp4")
+	os.WriteFile(mediaPath, []byte("fake-video-content"), 0644)
+
+	hash := "abc123"
+	stored := "abc123.mp4"
+	sf := &ServiceFile{
+		Items: []ServiceItem{
+			NewMediaItem("My Video", &hash, &stored),
+		},
+		MediaFiles: []EmbeddedFile{
+			{StoredName: "abc123.mp4", LocalPath: mediaPath},
+		},
+	}
+
+	oszPath := filepath.Join(dir, "test.osz")
+	if err := sf.WriteOSZ(oszPath); err != nil {
+		t.Fatalf("WriteOSZ: %v", err)
+	}
+
+	r, err := zip.OpenReader(oszPath)
+	if err != nil {
+		t.Fatalf("opening zip: %v", err)
+	}
+	defer r.Close()
+
+	// Should contain service_data.osj + media file
+	if len(r.File) != 2 {
+		t.Fatalf("expected 2 files in zip, got %d", len(r.File))
+	}
+
+	names := map[string]bool{}
+	for _, f := range r.File {
+		names[f.Name] = true
+	}
+	if !names["service_data.osj"] {
+		t.Error("missing service_data.osj")
+	}
+	if !names["abc123.mp4"] {
+		t.Error("missing media file abc123.mp4")
 	}
 }

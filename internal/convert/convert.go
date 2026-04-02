@@ -4,32 +4,59 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/danield/pco2olp/internal/cache"
 	"github.com/danield/pco2olp/internal/openlp"
 	"github.com/danield/pco2olp/internal/pco"
 )
 
 // PlanToServiceFile converts PCO plan items into an OpenLP ServiceFile.
-func PlanToServiceFile(items []pco.Item) *openlp.ServiceFile {
+// itemMedia maps PCO item IDs to downloaded media files.
+// planMedia contains plan-level attachments to append at the end.
+func PlanToServiceFile(items []pco.Item, itemMedia map[string]*cache.MediaFile, planMedia []*cache.MediaFile) *openlp.ServiceFile {
 	sf := &openlp.ServiceFile{}
 
 	for _, item := range items {
-		si := itemToServiceItem(item)
+		var mf *cache.MediaFile
+		if itemMedia != nil {
+			mf = itemMedia[item.ID]
+		}
+		si := itemToServiceItem(item, mf)
 		if si != nil {
 			sf.Items = append(sf.Items, *si)
+			if mf != nil {
+				storedName := mf.SHA256 + mf.Extension
+				sf.MediaFiles = append(sf.MediaFiles, openlp.EmbeddedFile{
+					StoredName: storedName,
+					LocalPath:  mf.LocalPath,
+				})
+			}
+		}
+	}
+
+	// Append plan-level attachments as service items
+	for _, mf := range planMedia {
+		si := attachmentToServiceItem(mf)
+		if si != nil {
+			sf.Items = append(sf.Items, *si)
+			storedName := mf.SHA256 + mf.Extension
+			sf.MediaFiles = append(sf.MediaFiles, openlp.EmbeddedFile{
+				StoredName: storedName,
+				LocalPath:  mf.LocalPath,
+			})
 		}
 	}
 
 	return sf
 }
 
-func itemToServiceItem(item pco.Item) *openlp.ServiceItem {
+func itemToServiceItem(item pco.Item, mf *cache.MediaFile) *openlp.ServiceItem {
 	switch item.ItemType {
 	case "song":
 		return songToServiceItem(item)
 	case "header":
 		return headerToServiceItem(item)
 	case "media":
-		return mediaToServiceItem(item)
+		return mediaToServiceItem(item, mf)
 	default:
 		// "item" and other types -> custom slide
 		return customToServiceItem(item)
@@ -135,15 +162,67 @@ func customToServiceItem(item pco.Item) *openlp.ServiceItem {
 	return &si
 }
 
-func mediaToServiceItem(item pco.Item) *openlp.ServiceItem {
-	// Without actual media files (Phase 2), render as a custom placeholder
-	slides := []openlp.SlideData{{
-		Title:    truncate(item.Title, 30),
-		RawSlide: item.Title,
-		VerseTag: "1",
-	}}
-	si := openlp.NewCustomItem(item.Title, "[Media placeholder]", slides)
-	return &si
+func mediaToServiceItem(item pco.Item, mf *cache.MediaFile) *openlp.ServiceItem {
+	if mf == nil {
+		// No media file downloaded — render as custom placeholder
+		slides := []openlp.SlideData{{
+			Title:    truncate(item.Title, 30),
+			RawSlide: item.Title,
+			VerseTag: "1",
+		}}
+		si := openlp.NewCustomItem(item.Title, "[Media placeholder]", slides)
+		return &si
+	}
+
+	storedName := mf.SHA256 + mf.Extension
+	hash := mf.SHA256
+	return newMediaServiceItem(item.Title, mf.PCOMediaType, mf.ContentType, &hash, &storedName)
+}
+
+// attachmentToServiceItem creates a service item for a plan-level attachment.
+func attachmentToServiceItem(mf *cache.MediaFile) *openlp.ServiceItem {
+	title := mf.OriginalFilename
+	storedName := mf.SHA256 + mf.Extension
+	hash := mf.SHA256
+	return newMediaServiceItem(title, mf.PCOMediaType, mf.ContentType, &hash, &storedName)
+}
+
+// newMediaServiceItem creates the correct OpenLP service item based on media type.
+func newMediaServiceItem(title, pcoMediaType, contentType string, hash, storedName *string) *openlp.ServiceItem {
+	// Determine OpenLP item type from PCO media_type or content type
+	switch {
+	case isImageType(pcoMediaType, contentType):
+		si := openlp.NewImageItem(title, hash, storedName)
+		return &si
+	case isPresentationType(pcoMediaType, contentType):
+		si := openlp.NewPresentationItem(title, hash, storedName)
+		return &si
+	default:
+		si := openlp.NewMediaItem(title, hash, storedName)
+		return &si
+	}
+}
+
+func isImageType(pcoMediaType, contentType string) bool {
+	switch pcoMediaType {
+	case "image", "background_image":
+		return true
+	}
+	return strings.HasPrefix(contentType, "image/")
+}
+
+func isPresentationType(pcoMediaType, contentType string) bool {
+	switch pcoMediaType {
+	case "powerpoint", "document", "curriculum":
+		return true
+	}
+	switch {
+	case strings.Contains(contentType, "presentation"),
+		strings.Contains(contentType, "powerpoint"),
+		contentType == "application/pdf":
+		return true
+	}
+	return false
 }
 
 func collectNotes(item pco.Item) string {

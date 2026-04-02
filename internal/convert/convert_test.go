@@ -3,6 +3,7 @@ package convert
 import (
 	"testing"
 
+	"github.com/danield/pco2olp/internal/cache"
 	"github.com/danield/pco2olp/internal/pco"
 )
 
@@ -54,7 +55,7 @@ How sweet the sound`,
 		},
 	}
 
-	sf := PlanToServiceFile(items)
+	sf := PlanToServiceFile(items, nil, nil)
 
 	if len(sf.Items) != 4 {
 		t.Fatalf("expected 4 items, got %d", len(sf.Items))
@@ -84,12 +85,69 @@ How sweet the sound`,
 		t.Error("custom item should have notes")
 	}
 
-	// Check media (rendered as custom placeholder until Phase 2)
+	// Check media (rendered as custom placeholder when no media file downloaded)
 	if sf.Items[3].Header.Plugin != "custom" {
 		t.Errorf("media item plugin = %q, want 'custom'", sf.Items[3].Header.Plugin)
 	}
 	if sf.Items[3].Header.Type != 1 {
 		t.Errorf("media item type = %d, want 1", sf.Items[3].Header.Type)
+	}
+}
+
+func TestMediaWithDownloadedFile(t *testing.T) {
+	items := []pco.Item{
+		{
+			ID:       "10",
+			Title:    "Worship Video",
+			ItemType: "media",
+		},
+	}
+
+	mediaMap := map[string]*cache.MediaFile{
+		"10": {
+			OriginalFilename: "worship.mp4",
+			LocalPath:        "/tmp/abc123.mp4",
+			SHA256:           "abc123",
+			Extension:        ".mp4",
+			ContentType:      "video/mp4",
+			PCOMediaType:     "video",
+		},
+	}
+
+	sf := PlanToServiceFile(items, mediaMap, nil)
+	if len(sf.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(sf.Items))
+	}
+	if sf.Items[0].Header.Plugin != "media" {
+		t.Errorf("media item plugin = %q, want 'media'", sf.Items[0].Header.Plugin)
+	}
+	if sf.Items[0].Header.Type != 3 {
+		t.Errorf("media item type = %d, want 3", sf.Items[0].Header.Type)
+	}
+	if sf.Items[0].Header.SHA256FileHash == nil || *sf.Items[0].Header.SHA256FileHash != "abc123" {
+		t.Error("expected sha256 hash abc123")
+	}
+	if len(sf.MediaFiles) != 1 {
+		t.Fatalf("expected 1 media file, got %d", len(sf.MediaFiles))
+	}
+}
+
+func TestImageMediaType(t *testing.T) {
+	items := []pco.Item{
+		{ID: "20", Title: "Background", ItemType: "media"},
+	}
+	mediaMap := map[string]*cache.MediaFile{
+		"20": {
+			SHA256: "def456", Extension: ".jpg", ContentType: "image/jpeg",
+			PCOMediaType: "background_image", LocalPath: "/tmp/def456.jpg",
+		},
+	}
+	sf := PlanToServiceFile(items, mediaMap, nil)
+	if sf.Items[0].Header.Plugin != "images" {
+		t.Errorf("expected images plugin, got %s", sf.Items[0].Header.Plugin)
+	}
+	if sf.Items[0].Header.Type != 2 {
+		t.Errorf("expected type 2 (image), got %d", sf.Items[0].Header.Type)
 	}
 }
 
@@ -103,7 +161,7 @@ func TestSongWithNoLyrics(t *testing.T) {
 		},
 	}
 
-	sf := PlanToServiceFile(items)
+	sf := PlanToServiceFile(items, nil, nil)
 	if len(sf.Items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(sf.Items))
 	}

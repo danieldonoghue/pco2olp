@@ -4,12 +4,20 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 )
 
+// EmbeddedFile represents a file to embed in the .osz archive.
+type EmbeddedFile struct {
+	StoredName string // Name in the ZIP: "{sha256}{ext}"
+	LocalPath  string // Absolute path on disk to the cached file
+}
+
 // ServiceFile represents a complete OpenLP service file.
 type ServiceFile struct {
-	Items []ServiceItem
+	Items      []ServiceItem
+	MediaFiles []EmbeddedFile
 }
 
 // WriteOSZ writes the service file as an .osz (ZIP) archive.
@@ -76,5 +84,28 @@ func (sf *ServiceFile) WriteOSZ(path string) error {
 		return fmt.Errorf("writing osj data: %w", err)
 	}
 
+	// Write embedded media files
+	for _, mf := range sf.MediaFiles {
+		if err := addFileToZip(zw, mf.StoredName, mf.LocalPath); err != nil {
+			return fmt.Errorf("adding media file %s: %w", mf.StoredName, err)
+		}
+	}
+
 	return nil
+}
+
+// addFileToZip streams a local file into the ZIP archive.
+func addFileToZip(zw *zip.Writer, name, localPath string) error {
+	src, err := os.Open(localPath)
+	if err != nil {
+		return fmt.Errorf("opening %s: %w", localPath, err)
+	}
+	defer src.Close()
+
+	w, err := zw.Create(name)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(w, src)
+	return err
 }

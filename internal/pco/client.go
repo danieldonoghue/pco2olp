@@ -17,7 +17,7 @@ import (
 
 const (
 	baseURL   = "https://api.planningcenteronline.com"
-	userAgent = "pco2olp/1.0 (https://github.com/danield/pco2olp)"
+	userAgent = "pco2olp/1.0 (https://github.com/danieldonoghue/pco2olp)"
 )
 
 // Client is the Planning Center API client.
@@ -124,4 +124,101 @@ func (c *Client) doGet(ctx context.Context, reqURL string) ([]byte, error) {
 	}
 
 	return nil, fmt.Errorf("API request failed after 3 retries (rate limited)")
+}
+
+// post performs an authenticated POST request to the PCO API.
+func (c *Client) post(ctx context.Context, path string) ([]byte, error) {
+	reqURL := baseURL + path
+	return c.doPost(ctx, reqURL)
+}
+
+func (c *Client) doPost(ctx context.Context, reqURL string) ([]byte, error) {
+	for attempt := 0; attempt < 3; attempt++ {
+		if wait := time.Until(c.retryAfter); wait > 0 {
+			c.logf("rate limited, waiting %v", wait)
+			select {
+			case <-time.After(wait):
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "POST", reqURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("User-Agent", userAgent)
+
+		c.logf("POST %s", reqURL)
+
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("API request failed: %w", err)
+		}
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return nil, fmt.Errorf("reading response: %w", err)
+		}
+
+		c.logf("  -> %d (%d bytes)", resp.StatusCode, len(body))
+
+		switch {
+		case resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated:
+			return body, nil
+
+		case resp.StatusCode == http.StatusTooManyRequests:
+			retryAfter := resp.Header.Get("Retry-After")
+			secs, _ := strconv.Atoi(retryAfter)
+			if secs == 0 {
+				secs = 5
+			}
+			c.retryAfter = time.Now().Add(time.Duration(secs) * time.Second)
+			c.logf("  rate limited, retry after %ds", secs)
+			continue
+
+		case resp.StatusCode == http.StatusUnauthorized:
+			return nil, fmt.Errorf("unauthorized (HTTP 401). Try re-authenticating by deleting your token file")
+
+		default:
+			var apiErr struct {
+				Errors []struct {
+					Title  string `json:"title"`
+					Detail string `json:"detail"`
+				} `json:"errors"`
+			}
+			if json.Unmarshal(body, &apiErr) == nil && len(apiErr.Errors) > 0 {
+				return nil, fmt.Errorf("API error (HTTP %d): %s - %s",
+					resp.StatusCode, apiErr.Errors[0].Title, apiErr.Errors[0].Detail)
+			}
+			return nil, fmt.Errorf("API error (HTTP %d): %s", resp.StatusCode, string(body))
+		}
+	}
+
+	return nil, fmt.Errorf("API POST failed after 3 retries (rate limited)")
+}
+
+// DownloadFile streams a file from the given URL to w using the authenticated HTTP client.
+func (c *Client) DownloadFile(ctx context.Context, fileURL string, w io.Writer) (int64, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", fileURL, nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("User-Agent", userAgent)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("download request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("download failed (HTTP %d)", resp.StatusCode)
+	}
+
+	n, err := io.Copy(w, resp.Body)
+	if err != nil {
+		return n, fmt.Errorf("downloading file: %w", err)
+	}
+	return n, nil
 }

@@ -8,7 +8,8 @@ A single-binary CLI tool that authenticates with the PCO API, fetches your servi
 
 - OAuth 2.0 authentication with PCO (browser-based login, tokens cached locally)
 - List service types and plans from your PCO account
-- Generate `.osz` service files with songs (OpenLyrics XML), custom slides, and media placeholders
+- Generate `.osz` service files with songs (OpenLyrics XML), custom slides, images, media, and presentations
+- Automatically downloads and caches media from PCO (videos, images, presentations)
 - Preview service plans without generating files (dry-run mode)
 - Cross-platform: macOS (Intel + Apple Silicon), Linux (x86_64 + ARM64), Windows
 
@@ -54,6 +55,15 @@ pco2olp --service-type "Sunday Service" --date 2026-04-05 --output sunday.osz
 
 # Exclude section headers from the service
 pco2olp --service-type "Sunday Service" --date 2026-04-05 --no-headers
+
+# Force re-download of all media (bypass cache)
+pco2olp --service-type "Sunday Service" --date 2026-04-05 --no-cache
+
+# Show media cache info
+pco2olp --cache-info
+
+# Clear media cache
+pco2olp --clean-cache
 ```
 
 ## Installation
@@ -83,8 +93,9 @@ ls dist/
 
 1. **Authentication**: On first run, pco2olp opens your browser for PCO login. Tokens are cached in your platform's config directory and auto-refreshed.
 2. **Fetch**: The tool queries the PCO Services API for your plan's items — songs (with lyrics and arrangements), headers, custom items, and media references.
-3. **Convert**: PCO items are mapped to OpenLP service items. Song lyrics are parsed into structured verses and converted to OpenLyrics XML.
-4. **Generate**: Everything is packaged into an `.osz` file (ZIP archive containing `service_data.osj`) that OpenLP 3.x can open directly.
+3. **Download**: Media attachments (videos, images, presentations) are downloaded and cached locally. Subsequent runs skip unchanged files.
+4. **Convert**: PCO items are mapped to OpenLP service items. Song lyrics are parsed into structured verses and converted to OpenLyrics XML. Media files are mapped to the correct OpenLP plugin (images, media, or presentations).
+5. **Generate**: Everything is packaged into an `.osz` file (ZIP archive containing `service_data.osj` + media files) that OpenLP 3.x can open directly.
 
 ## Token Storage
 
@@ -98,6 +109,18 @@ Tokens are stored in your platform's config directory:
 
 Delete `tokens.json` to force re-authentication.
 
+## Media Cache
+
+Media files (videos, images, presentations) downloaded from PCO are cached locally to avoid redundant downloads:
+
+| Platform | Path |
+|----------|------|
+| macOS    | `~/Library/Caches/pco2olp/media/` |
+| Linux    | `~/.cache/pco2olp/media/` |
+| Windows  | `%LOCALAPPDATA%\pco2olp\media\` |
+
+Files are stored by SHA256 hash. The cache automatically detects when files have been updated in PCO. Use `--no-cache` to bypass the cache, or `--clean-cache` to clear it entirely.
+
 ## CLI Reference
 
 | Flag | Description |
@@ -107,10 +130,13 @@ Delete `tokens.json` to force re-authentication.
 | `--date <YYYY-MM-DD>` | Plan date to generate |
 | `--output <path>` | Output file path (default: `<date>-<title>.osz`) |
 | `--no-headers` | Exclude header items from the generated service |
+| `--no-cache` | Force re-download of all media (bypass cache) |
 | `--list-service-types` | List available PCO service types |
 | `--list-plans` | List plans for the specified service type (recent by default) |
 | `--all` | Show all plans instead of just recent ones |
 | `--dry-run` | Preview plan items without generating a file |
+| `--cache-info` | Show media cache directory, file count, and total size |
+| `--clean-cache` | Delete all cached media files |
 | `--debug` | Enable verbose debug logging |
 | `--version` | Show version information |
 

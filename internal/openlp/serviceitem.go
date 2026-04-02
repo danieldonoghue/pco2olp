@@ -33,9 +33,11 @@ const (
 
 // Common capability sets.
 var (
-	SongCapabilities   = []int{CapCanEdit, CapCanPreview, CapCanLoop, CapOnLoadUpdate, CapAddIfNewItem, CapCanSoftBreak, CapHasMetaData}
-	CustomCapabilities = []int{CapCanEdit, CapCanPreview, CapCanLoop, CapCanSoftBreak, CapOnLoadUpdate, CapCanWordSplit}
-	MediaCapabilities  = []int{CapCanAutoStartForLive, CapCanEditTitle, CapRequiresMedia}
+	SongCapabilities         = []int{CapCanEdit, CapCanPreview, CapCanLoop, CapOnLoadUpdate, CapAddIfNewItem, CapCanSoftBreak, CapHasMetaData}
+	CustomCapabilities       = []int{CapCanEdit, CapCanPreview, CapCanLoop, CapCanSoftBreak, CapOnLoadUpdate, CapCanWordSplit}
+	MediaCapabilities        = []int{CapCanAutoStartForLive, CapCanEditTitle, CapRequiresMedia}
+	ImageCapabilities        = []int{CapCanPreview, CapCanEditTitle, CapHasThumbnails, CapProvidesOwnTheme}
+	PresentationCapabilities = []int{CapCanEditTitle, CapProvidesOwnDisplay, CapHasDisplayTitle, CapHasNotes, CapHasThumbnails}
 )
 
 // ServiceItem represents a single item in an OpenLP service.
@@ -156,8 +158,8 @@ func NewCustomItem(title, notes string, slides []SlideData) ServiceItem {
 	}
 }
 
-// NewMediaItem creates a media service item placeholder.
-func NewMediaItem(title string) ServiceItem {
+// NewMediaItem creates a media service item (video/audio).
+func NewMediaItem(title string, sha256Hash, storedFilename *string) ServiceItem {
 	processor := "qt6"
 	theme := -1
 	return ServiceItem{
@@ -168,18 +170,69 @@ func NewMediaItem(title string) ServiceItem {
 			Title:           title,
 			Footer:          []string{},
 			Type:            TypeCommand,
-			Audit:           "",
-			Notes:           "",
-			FromPlugin:      false,
 			Capabilities:    MediaCapabilities,
 			Search:          title,
 			Data:            "",
-			XMLVersion:      nil,
 			Processor:       &processor,
 			BackgroundAudio: []string{},
 			Metadata:        []any{},
+			SHA256FileHash:  sha256Hash,
+			StoredFilename:  storedFilename,
 		},
-		Data: []SlideData{},
+		Data: []SlideData{{
+			Title:    title,
+			RawSlide: title,
+		}},
+	}
+}
+
+// NewImageItem creates an image service item.
+func NewImageItem(title string, sha256Hash, storedFilename *string) ServiceItem {
+	return ServiceItem{
+		Header: ItemHeader{
+			Name:            "images",
+			Plugin:          "images",
+			Theme:           nil,
+			Title:           title,
+			Footer:          []string{},
+			Type:            TypeImage,
+			Capabilities:    ImageCapabilities,
+			Search:          title,
+			Data:            "",
+			BackgroundAudio: []string{},
+			Metadata:        []any{},
+			SHA256FileHash:  sha256Hash,
+			StoredFilename:  storedFilename,
+		},
+		Data: []SlideData{{
+			Title: title,
+		}},
+	}
+}
+
+// NewPresentationItem creates a presentation service item (PowerPoint, PDF, etc.).
+func NewPresentationItem(title string, sha256Hash, storedFilename *string) ServiceItem {
+	processor := "Impress"
+	return ServiceItem{
+		Header: ItemHeader{
+			Name:            "presentations",
+			Plugin:          "presentations",
+			Theme:           nil,
+			Title:           title,
+			Footer:          []string{},
+			Type:            TypeCommand,
+			Capabilities:    PresentationCapabilities,
+			Search:          title,
+			Data:            "",
+			Processor:       &processor,
+			BackgroundAudio: []string{},
+			Metadata:        []any{},
+			SHA256FileHash:  sha256Hash,
+			StoredFilename:  storedFilename,
+		},
+		Data: []SlideData{{
+			Title: title,
+		}},
 	}
 }
 

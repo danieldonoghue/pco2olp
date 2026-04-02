@@ -4,12 +4,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
 	"time"
 
 	"github.com/danield/pco2olp/internal/auth"
+	"github.com/danield/pco2olp/internal/cache"
 	"github.com/danield/pco2olp/internal/convert"
 	"github.com/danield/pco2olp/internal/pco"
 )
@@ -29,7 +31,7 @@ func main() {
 	listPlans := flag.Bool("list-plans", false, "List plans for a service type")
 	dryRun := flag.Bool("dry-run", false, "Show what would be generated without creating the file")
 	noHeaders := flag.Bool("no-headers", false, "Exclude header items from the generated service")
-	includeMedia := flag.Bool("include-media", false, "Include media attachments")
+	noCache := flag.Bool("no-cache", false, "Bypass media cache and re-download all files")
 	debug := flag.Bool("debug", false, "Enable debug logging")
 	showVersion := flag.Bool("version", false, "Show version information")
 	allPlans := flag.Bool("all", false, "Show all plans (default: recent and upcoming only)")
@@ -49,11 +51,6 @@ func main() {
 
 	flag.Parse()
 
-	// Suppress unused variable warnings for Phase 2 flags
-	_ = includeMedia
-	_ = cleanCache
-	_ = cacheInfo
-
 	if *showVersion {
 		fmt.Printf("pco2olp %s (commit: %s, built: %s)\n", version, commit, buildTime)
 		os.Exit(0)
@@ -63,6 +60,16 @@ func main() {
 	defer cancel()
 
 	switch {
+	case *cleanCache:
+		if err := runCleanCache(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+	case *cacheInfo:
+		if err := runCacheInfo(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 	case *listServiceTypes:
 		if err := runListServiceTypes(ctx, *debug); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -97,7 +104,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "  pco2olp --service-type <name|id> --date <YYYY-MM-DD> --dry-run\n")
 			os.Exit(1)
 		}
-		if err := runGenerate(ctx, *serviceType, *date, *planID, *output, *noHeaders, *debug); err != nil {
+		if err := runGenerate(ctx, *serviceType, *date, *planID, *output, *noHeaders, *noCache, *debug); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -254,7 +261,7 @@ func runDryRun(ctx context.Context, serviceType, dateStr, planIDStr string, noHe
 	return nil
 }
 
-func runGenerate(ctx context.Context, serviceType, dateStr, planIDStr, output string, noHeaders, debug bool) error {
+func runGenerate(ctx context.Context, serviceType, dateStr, planIDStr, output string, noHeaders, noCache, debug bool) error {
 	client, err := authenticate(ctx, debug)
 	if err != nil {
 		return err
@@ -317,7 +324,16 @@ func runGenerate(ctx context.Context, serviceType, dateStr, planIDStr, output st
 		}
 	}
 
-	serviceFile := convert.PlanToServiceFile(items)
+	// Download media
+	mediaCache, err := cache.NewCache()
+	if err != nil {
+		return fmt.Errorf("initializing media cache: %w", err)
+	}
+
+	itemMedia := downloadItemMedia(ctx, client, st.ID, plan.ID, items, noCache, mediaCache)
+	planMedia := downloadPlanAttachments(ctx, client, st.ID, plan.ID, noCache, mediaCache)
+
+	serviceFile := convert.PlanToServiceFile(items, itemMedia, planMedia)
 
 	if err := serviceFile.WriteOSZ(output); err != nil {
 		return fmt.Errorf("writing %s: %w", output, err)
@@ -329,6 +345,119 @@ func runGenerate(ctx context.Context, serviceType, dateStr, planIDStr, output st
 		size = formatSize(fi.Size())
 	}
 	fmt.Printf("Written: %s (%s)\n", output, size)
+	return nil
+}
+
+func downloadItemMedia(ctx context.Context, client *pco.Client, serviceTypeID, planID string, items []pco.Item, noCache bool, mediaCache *cache.Cache) map[string]*cache.MediaFile {
+	mediaMap := make(map[string]*cache.MediaFile)
+
+	for _, item := range items {
+		if item.ItemType != "media" {
+			continue
+		}
+
+		// Get the media resource for this item (provides media_type)
+		mediaList, err := client.GetItemMedia(ctx, serviceTypeID, planID, item.ID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not fetch media for %q: %v\n", item.Title, err)
+			continue
+		}
+
+		var pcoMediaType string
+		if len(mediaList) > 0 {
+			pcoMediaType = mediaList[0].MediaType
+		}
+
+		// Get attachments (the actual downloadable files)
+		attachments, err := client.GetItemAttachments(ctx, serviceTypeID, planID, item.ID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not fetch attachments for %q: %v\n", item.Title, err)
+			continue
+		}
+
+		if len(attachments) == 0 {
+			continue
+		}
+
+		att := attachments[0] // Use the first attachment
+		fmt.Printf("  Downloading %s...\n", att.Filename)
+
+		mf, err := mediaCache.EnsureCached(att.ID, att.UpdatedAt, att.Filename, att.ContentType, att.FileSize, noCache, func(w io.Writer) (int64, error) {
+			downloadURL, err := client.OpenAttachment(ctx, att.ID)
+			if err != nil {
+				return 0, err
+			}
+			return client.DownloadFile(ctx, downloadURL, w)
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not download %q: %v\n", att.Filename, err)
+			continue
+		}
+
+		mf.PCOMediaType = pcoMediaType
+		mediaMap[item.ID] = mf
+	}
+
+	return mediaMap
+}
+
+func downloadPlanAttachments(ctx context.Context, client *pco.Client, serviceTypeID, planID string, noCache bool, mediaCache *cache.Cache) []*cache.MediaFile {
+	attachments, err := client.GetPlanAttachments(ctx, serviceTypeID, planID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not fetch plan attachments: %v\n", err)
+		return nil
+	}
+
+	if len(attachments) == 0 {
+		return nil
+	}
+
+	var planMedia []*cache.MediaFile
+	for _, att := range attachments {
+		fmt.Printf("  Downloading plan attachment %s...\n", att.Filename)
+
+		mf, err := mediaCache.EnsureCached(att.ID, att.UpdatedAt, att.Filename, att.ContentType, att.FileSize, noCache, func(w io.Writer) (int64, error) {
+			downloadURL, err := client.OpenAttachment(ctx, att.ID)
+			if err != nil {
+				return 0, err
+			}
+			return client.DownloadFile(ctx, downloadURL, w)
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not download plan attachment %q: %v\n", att.Filename, err)
+			continue
+		}
+
+		planMedia = append(planMedia, mf)
+	}
+
+	return planMedia
+}
+
+func runCleanCache() error {
+	c, err := cache.NewCache()
+	if err != nil {
+		return err
+	}
+	if err := c.Clean(); err != nil {
+		return fmt.Errorf("cleaning cache: %w", err)
+	}
+	fmt.Println("Media cache cleaned.")
+	return nil
+}
+
+func runCacheInfo() error {
+	c, err := cache.NewCache()
+	if err != nil {
+		return err
+	}
+	dir, count, size, err := c.Info()
+	if err != nil {
+		return fmt.Errorf("reading cache info: %w", err)
+	}
+	fmt.Printf("Cache directory: %s\n", dir)
+	fmt.Printf("Cached files:    %d\n", count)
+	fmt.Printf("Total size:      %s\n", formatSize(size))
 	return nil
 }
 

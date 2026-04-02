@@ -64,3 +64,21 @@ type ListPlansOpts struct {
 	AfterDate  *time.Time
 	BeforeDate *time.Time
 }
+
+// Media represents a PCO media object attached to a plan item.
+type Media struct {
+	ID        string
+	Title     string
+	MediaType string // "video", "image", "powerpoint", "background_image", etc.
+	UpdatedAt time.Time
+}
+
+// Attachment represents a downloadable file in PCO.
+type Attachment struct {
+	ID          string
+	Filename    string
+	ContentType string
+	FileSize    int64
+	URL         string
+	UpdatedAt   time.Time
+}
