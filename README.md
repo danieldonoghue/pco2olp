@@ -124,6 +124,20 @@ make release        # Cross-compile for all platforms → dist/
 make clean          # Remove build artifacts
 ```
 
+### Organisation Builds
+
+You can bake your PCO OAuth credentials into the binary so your org members don't need to set environment variables:
+
+```bash
+# Build for current platform with embedded credentials
+make build-org PCO_CLIENT_ID=your-id PCO_CLIENT_SECRET=your-secret
+
+# Cross-compile all platforms with embedded credentials
+make release-org PCO_CLIENT_ID=your-id PCO_CLIENT_SECRET=your-secret
+```
+
+Environment variables (`PCO_CLIENT_ID`, `PCO_CLIENT_SECRET`) always take precedence over baked-in defaults, so users can still override if needed.
+
 ## License
 
 MIT

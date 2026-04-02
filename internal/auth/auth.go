@@ -18,8 +18,15 @@ import (
 const (
 	pcoAuthURL  = "https://api.planningcenteronline.com/oauth/authorize"
 	pcoTokenURL = "https://api.planningcenteronline.com/oauth/token"
+)
 
-	defaultClientID = "" // Override via PCO_CLIENT_ID env var
+// These can be set at build time via -ldflags:
+//
+//	-X github.com/danield/pco2olp/internal/auth.defaultClientID=...
+//	-X github.com/danield/pco2olp/internal/auth.defaultClientSecret=...
+var (
+	defaultClientID     = ""
+	defaultClientSecret = ""
 )
 
 // Authenticator manages the OAuth 2.0 flow with Planning Center.
@@ -35,6 +42,9 @@ func NewAuthenticator(tokenStore *TokenStore) *Authenticator {
 		clientID = defaultClientID
 	}
 	clientSecret := os.Getenv("PCO_CLIENT_SECRET")
+	if clientSecret == "" {
+		clientSecret = defaultClientSecret
+	}
 	return &Authenticator{
 		oauthConfig: &oauth2.Config{
 			ClientID:     clientID,
