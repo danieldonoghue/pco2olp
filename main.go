@@ -22,11 +22,13 @@ var (
 
 func main() {
 	serviceType := flag.String("service-type", "", "Service type name or ID")
+	planID := flag.String("plan", "", "Plan ID (alternative to --date)")
 	date := flag.String("date", "", "Plan date (YYYY-MM-DD)")
-	output := flag.String("output", "service.osz", "Output .osz file path")
+	output := flag.String("output", "", "Output .osz file path (default: <date>-<title>.osz)")
 	listServiceTypes := flag.Bool("list-service-types", false, "List available service types")
 	listPlans := flag.Bool("list-plans", false, "List plans for a service type")
 	dryRun := flag.Bool("dry-run", false, "Show what would be generated without creating the file")
+	noHeaders := flag.Bool("no-headers", false, "Exclude header items from the generated service")
 	includeMedia := flag.Bool("include-media", false, "Include media attachments")
 	debug := flag.Bool("debug", false, "Enable debug logging")
 	showVersion := flag.Bool("version", false, "Show version information")
@@ -76,25 +78,26 @@ func main() {
 			os.Exit(1)
 		}
 	case *dryRun:
-		if *serviceType == "" || *date == "" {
-			fmt.Fprintf(os.Stderr, "Error: --service-type and --date are required with --dry-run\n")
+		if *serviceType == "" || (*date == "" && *planID == "") {
+			fmt.Fprintf(os.Stderr, "Error: --service-type and --date (or --plan) are required with --dry-run\n")
 			os.Exit(1)
 		}
-		if err := runDryRun(ctx, *serviceType, *date, *debug); err != nil {
+		if err := runDryRun(ctx, *serviceType, *date, *planID, *noHeaders, *debug); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 	default:
-		if *serviceType == "" || *date == "" {
-			fmt.Fprintf(os.Stderr, "Error: --service-type and --date are required\n")
+		if *serviceType == "" || (*date == "" && *planID == "") {
+			fmt.Fprintf(os.Stderr, "Error: --service-type and --date (or --plan) are required\n")
 			fmt.Fprintf(os.Stderr, "Usage: pco2olp --service-type <name|id> --date <YYYY-MM-DD> [--output <file.osz>]\n")
+			fmt.Fprintf(os.Stderr, "       pco2olp --service-type <name|id> --plan <id> [--output <file.osz>]\n")
 			fmt.Fprintf(os.Stderr, "\nOther commands:\n")
 			fmt.Fprintf(os.Stderr, "  pco2olp --list-service-types\n")
 			fmt.Fprintf(os.Stderr, "  pco2olp --service-type <name|id> --list-plans\n")
 			fmt.Fprintf(os.Stderr, "  pco2olp --service-type <name|id> --date <YYYY-MM-DD> --dry-run\n")
 			os.Exit(1)
 		}
-		if err := runGenerate(ctx, *serviceType, *date, *output, *debug); err != nil {
+		if err := runGenerate(ctx, *serviceType, *date, *planID, *output, *noHeaders, *debug); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -199,7 +202,18 @@ func runListPlans(ctx context.Context, serviceType string, all bool, debug bool)
 	return nil
 }
 
-func runDryRun(ctx context.Context, serviceType, dateStr string, debug bool) error {
+func resolvePlan(ctx context.Context, client *pco.Client, serviceTypeID, dateStr, planIDStr string) (*pco.Plan, error) {
+	if planIDStr != "" {
+		return client.GetPlan(ctx, serviceTypeID, planIDStr)
+	}
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid date format %q (expected YYYY-MM-DD): %w", dateStr, err)
+	}
+	return client.FindPlanByDate(ctx, serviceTypeID, date)
+}
+
+func runDryRun(ctx context.Context, serviceType, dateStr, planIDStr string, noHeaders, debug bool) error {
 	client, err := authenticate(ctx, debug)
 	if err != nil {
 		return err
@@ -210,12 +224,7 @@ func runDryRun(ctx context.Context, serviceType, dateStr string, debug bool) err
 		return err
 	}
 
-	date, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		return fmt.Errorf("invalid date format %q (expected YYYY-MM-DD): %w", dateStr, err)
-	}
-
-	plan, err := client.FindPlanByDate(ctx, st.ID, date)
+	plan, err := resolvePlan(ctx, client, st.ID, dateStr, planIDStr)
 	if err != nil {
 		return err
 	}
@@ -233,6 +242,9 @@ func runDryRun(ctx context.Context, serviceType, dateStr string, debug bool) err
 
 	fmt.Println("Items:")
 	for i, item := range items {
+		if noHeaders && item.ItemType == "header" {
+			continue
+		}
 		extra := ""
 		if item.Song != nil {
 			extra = fmt.Sprintf(" (%s)", item.Song.Author)
@@ -242,7 +254,7 @@ func runDryRun(ctx context.Context, serviceType, dateStr string, debug bool) err
 	return nil
 }
 
-func runGenerate(ctx context.Context, serviceType, dateStr, output string, debug bool) error {
+func runGenerate(ctx context.Context, serviceType, dateStr, planIDStr, output string, noHeaders, debug bool) error {
 	client, err := authenticate(ctx, debug)
 	if err != nil {
 		return err
@@ -253,14 +265,13 @@ func runGenerate(ctx context.Context, serviceType, dateStr, output string, debug
 		return err
 	}
 
-	date, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		return fmt.Errorf("invalid date format %q (expected YYYY-MM-DD): %w", dateStr, err)
+	if planIDStr != "" {
+		fmt.Printf("Fetching plan %s for %q...\n", planIDStr, st.Name)
+	} else {
+		fmt.Printf("Fetching plan for %q on %s...\n", st.Name, dateStr)
 	}
 
-	fmt.Printf("Fetching plan for %q on %s...\n", st.Name, dateStr)
-
-	plan, err := client.FindPlanByDate(ctx, st.ID, date)
+	plan, err := resolvePlan(ctx, client, st.ID, dateStr, planIDStr)
 	if err != nil {
 		return err
 	}
@@ -271,6 +282,28 @@ func runGenerate(ctx context.Context, serviceType, dateStr, output string, debug
 	}
 
 	fmt.Printf("Found plan: %s (%d items)\n", plan.Title, len(items))
+
+	// Default output filename from plan date and title
+	if output == "" {
+		slug := sanitizeFilename(plan.Title)
+		datePrefix := plan.SortDate.Format("2006-01-02")
+		if slug != "" {
+			output = datePrefix + "-" + slug + ".osz"
+		} else {
+			output = datePrefix + ".osz"
+		}
+	}
+
+	// Filter out headers if requested
+	if noHeaders {
+		filtered := items[:0]
+		for _, item := range items {
+			if item.ItemType != "header" {
+				filtered = append(filtered, item)
+			}
+		}
+		items = filtered
+	}
 
 	// Enrich items with arrangement lyrics where needed
 	for i := range items {
@@ -354,4 +387,17 @@ func formatSize(bytes int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMG"[exp])
+}
+
+func sanitizeFilename(s string) string {
+	// Replace characters that are problematic in filenames
+	replacer := strings.NewReplacer(
+		"/", "-", "\\", "-", ":", "-", "*", "", "?", "",
+		"\"", "", "<", "", ">", "", "|", "",
+	)
+	s = replacer.Replace(s)
+	s = strings.TrimSpace(s)
+	// Collapse multiple spaces/dashes
+	parts := strings.Fields(s)
+	return strings.Join(parts, " ")
 }

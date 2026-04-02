@@ -181,6 +181,28 @@ func (c *Client) FindPlanByDate(ctx context.Context, serviceTypeID string, date 
 	return best, nil
 }
 
+// GetPlan fetches a single plan by ID.
+func (c *Client) GetPlan(ctx context.Context, serviceTypeID, planID string) (*Plan, error) {
+	path := fmt.Sprintf("/services/v2/service_types/%s/plans/%s", serviceTypeID, planID)
+	body, err := c.get(ctx, path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp struct {
+		Data jsonAPIResource `json:"data"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("parsing plan: %w", err)
+	}
+
+	plan, err := parsePlan(resp.Data)
+	if err != nil {
+		return nil, err
+	}
+	return &plan, nil
+}
+
 // GetPlanItems returns all items for a plan, including song/arrangement details.
 func (c *Client) GetPlanItems(ctx context.Context, serviceTypeID, planID string) ([]Item, error) {
 	path := fmt.Sprintf("/services/v2/service_types/%s/plans/%s/items", serviceTypeID, planID)

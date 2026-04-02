@@ -140,7 +140,7 @@ func NewCustomItem(title, notes string, slides []SlideData) ServiceItem {
 			Plugin:          "custom",
 			Theme:           nil,
 			Title:           title,
-			Footer:          []string{},
+			Footer:          []string{title},
 			Type:            TypeText,
 			Audit:           "",
 			Notes:           notes,

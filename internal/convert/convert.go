@@ -136,7 +136,13 @@ func customToServiceItem(item pco.Item) *openlp.ServiceItem {
 }
 
 func mediaToServiceItem(item pco.Item) *openlp.ServiceItem {
-	si := openlp.NewMediaItem(item.Title)
+	// Without actual media files (Phase 2), render as a custom placeholder
+	slides := []openlp.SlideData{{
+		Title:    truncate(item.Title, 30),
+		RawSlide: item.Title,
+		VerseTag: "1",
+	}}
+	si := openlp.NewCustomItem(item.Title, "[Media placeholder]", slides)
 	return &si
 }
 

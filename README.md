@@ -34,17 +34,26 @@ export PCO_CLIENT_SECRET="your-client-secret-here"
 # List your service types
 pco2olp --list-service-types
 
-# List plans for a service type
+# List plans for a service type (shows recent plans, highlights next upcoming)
 pco2olp --service-type "Sunday Service" --list-plans
+
+# List all plans (full history)
+pco2olp --service-type "Sunday Service" --list-plans --all
 
 # Preview a plan
 pco2olp --service-type "Sunday Service" --date 2026-04-05 --dry-run
 
-# Generate an .osz file
+# Generate an .osz file (defaults to <date>-<title>.osz)
 pco2olp --service-type "Sunday Service" --date 2026-04-05
+
+# Generate by plan ID instead of date
+pco2olp --service-type "Sunday Service" --plan 87132676
 
 # Custom output filename
 pco2olp --service-type "Sunday Service" --date 2026-04-05 --output sunday.osz
+
+# Exclude section headers from the service
+pco2olp --service-type "Sunday Service" --date 2026-04-05 --no-headers
 ```
 
 ## Installation
@@ -94,10 +103,13 @@ Delete `tokens.json` to force re-authentication.
 | Flag | Description |
 |------|-------------|
 | `--service-type <name\|id>` | Service type name (fuzzy match) or numeric ID |
+| `--plan <id>` | Plan ID (alternative to `--date`) |
 | `--date <YYYY-MM-DD>` | Plan date to generate |
-| `--output <path>` | Output file path (default: `service.osz`) |
+| `--output <path>` | Output file path (default: `<date>-<title>.osz`) |
+| `--no-headers` | Exclude header items from the generated service |
 | `--list-service-types` | List available PCO service types |
-| `--list-plans` | List plans for the specified service type |
+| `--list-plans` | List plans for the specified service type (recent by default) |
+| `--all` | Show all plans instead of just recent ones |
 | `--dry-run` | Preview plan items without generating a file |
 | `--debug` | Enable verbose debug logging |
 | `--version` | Show version information |

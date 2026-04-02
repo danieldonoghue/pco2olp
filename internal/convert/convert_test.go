@@ -84,12 +84,12 @@ How sweet the sound`,
 		t.Error("custom item should have notes")
 	}
 
-	// Check media
-	if sf.Items[3].Header.Plugin != "media" {
-		t.Errorf("media item plugin = %q, want 'media'", sf.Items[3].Header.Plugin)
+	// Check media (rendered as custom placeholder until Phase 2)
+	if sf.Items[3].Header.Plugin != "custom" {
+		t.Errorf("media item plugin = %q, want 'custom'", sf.Items[3].Header.Plugin)
 	}
-	if sf.Items[3].Header.Type != 3 {
-		t.Errorf("media item type = %d, want 3", sf.Items[3].Header.Type)
+	if sf.Items[3].Header.Type != 1 {
+		t.Errorf("media item type = %d, want 1", sf.Items[3].Header.Type)
 	}
 }
 
