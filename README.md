@@ -1,17 +1,38 @@
+<div align="center">
+
+<img src="resources/app-icon.svg" width="96" alt="pco2olp">
+
 # pco2olp
 
 Convert [Planning Center Online](https://www.planningcenteronline.com/) service plans to [OpenLP](https://openlp.org/) service files.
 
-A single-binary CLI tool that authenticates with the PCO API, fetches your service plan, and generates an `.osz` file you can open directly in OpenLP 3.x. No installation required — just download and run.
+</div>
+
+---
+
+A CLI tool and graphical app that authenticates with Planning Center Online, fetches your service plan, and generates an `.osz` file ready to open in OpenLP 3.x. Available as a GUI app for everyday use, or a CLI tool for scripting and automation. No installation required — just download and run.
 
 ## Features
 
+- **Graphical interface** for macOS, Windows, and Linux — no command line needed
 - OAuth 2.0 authentication with PCO (browser-based login, tokens cached locally)
 - List service types and plans from your PCO account
 - Generate `.osz` service files with songs (OpenLyrics XML), custom slides, images, media, and presentations
 - Automatically downloads and caches media from PCO (videos, images, presentations)
 - Preview service plans without generating files (dry-run mode)
 - Cross-platform: macOS (Intel + Apple Silicon), Linux (x86_64 + ARM64), Windows
+
+## GUI
+
+Download the app for your platform from the [releases page](https://github.com/danieldonoghue/pco2olp/releases):
+
+| Platform | Download |
+|----------|----------|
+| macOS (Universal) | `pco2olp-gui-<version>-darwin-universal.zip` — unzip and drag to Applications |
+| Windows | `pco2olp-gui-windows-amd64.exe` — double-click to launch |
+| Linux | `pco2olp-gui-linux-amd64` — run from terminal |
+
+The GUI launches automatically when run without arguments. It lets you pick a service type, browse plans, preview items and attachments, and generate the `.osz` file with a single click.
 
 ## Quick Start
 
@@ -142,10 +163,12 @@ Files are stored by SHA256 hash. The cache automatically detects when files have
 ## Building
 
 ```bash
-make build          # Build local binary
+make build          # Build CLI binary
+make build-gui      # Build GUI binary (requires CGO)
 make test           # Run all tests
 make lint           # Run go vet
-make release        # Cross-compile for all platforms → dist/
+make release        # Cross-compile CLI for all platforms → dist/
+make release-gui    # Build macOS .app bundle → dist/  (macOS only, requires fyne CLI + librsvg)
 make clean          # Remove build artifacts
 ```
 
@@ -156,9 +179,11 @@ You can bake your PCO OAuth credentials and organisation name into the binary so
 ```bash
 # Build for current platform with embedded credentials
 make build-org PCO_CLIENT_ID=your-id PCO_CLIENT_SECRET=your-secret ORG_NAME="My Church"
+make build-gui-org PCO_CLIENT_ID=your-id PCO_CLIENT_SECRET=your-secret ORG_NAME="My Church"
 
-# Cross-compile all platforms with embedded credentials
+# Release builds with embedded credentials
 make release-org PCO_CLIENT_ID=your-id PCO_CLIENT_SECRET=your-secret ORG_NAME="My Church"
+make release-gui-org PCO_CLIENT_ID=your-id PCO_CLIENT_SECRET=your-secret ORG_NAME="My Church"
 ```
 
 `ORG_NAME` is optional. When set, it appears in the version output:

@@ -12,8 +12,8 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  # ── Linux + Windows builds (cross-compiled on ubuntu) ──────────────────────
-  build-linux-windows:
+  # ── CLI: Linux + Windows (cross-compiled on ubuntu, no CGO) ────────────────
+  build-cli-linux-windows:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +22,7 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Build linux/amd64, linux/arm64, windows/amd64
+      - name: Build CLI linux/amd64, linux/arm64, windows/amd64
         run: |
           VERSION="${{ github.ref_name }}"
           COMMIT="$(git rev-parse --short HEAD)"
@@ -31,16 +31,74 @@ jobs:
 
           mkdir -p dist
 
-          GOOS=linux  GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-linux-amd64   .
-          GOOS=linux  GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-linux-arm64   .
+          GOOS=linux   GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-linux-amd64   .
+          GOOS=linux   GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-linux-arm64   .
           GOOS=windows GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-windows-amd64.exe .
 
       - uses: actions/upload-artifact@v4
         with:
-          name: binaries-linux-windows
+          name: binaries-cli-linux-windows
           path: dist/
 
-  # ── macOS builds (native runner for optional code signing) ─────────────────
+  # ── GUI: Linux (native CGO, X11) ───────────────────────────────────────────
+  build-gui-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install GUI dependencies
+        run: sudo apt-get install -y libgl1-mesa-dev xorg-dev
+
+      - name: Build GUI linux/amd64
+        run: |
+          VERSION="${{ github.ref_name }}"
+          COMMIT="$(git rev-parse --short HEAD)"
+          BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          LDFLAGS="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.buildTime=${BUILD_TIME}"
+
+          mkdir -p dist
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -tags gui -ldflags "${LDFLAGS}" -o dist/pco2olp-gui-linux-amd64 .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries-gui-linux
+          path: dist/
+
+  # ── GUI: Windows (native CGO on windows runner) ────────────────────────────
+  build-gui-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Add MinGW to PATH
+        shell: powershell
+        run: Add-Content $env:GITHUB_PATH "C:\msys64\mingw64\bin"
+
+      - name: Build GUI windows/amd64
+        shell: bash
+        run: |
+          VERSION="${{ github.ref_name }}"
+          COMMIT="$(git rev-parse --short HEAD)"
+          BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          LDFLAGS="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.buildTime=${BUILD_TIME}"
+
+          mkdir -p dist
+          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -tags gui -ldflags "${LDFLAGS}" -o dist/pco2olp-gui-windows-amd64.exe .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries-gui-windows
+          path: dist/
+
+  # ── GUI + CLI: macOS universal .app bundle ─────────────────────────────────
   build-macos:
     runs-on: macos-latest
     env:
@@ -52,19 +110,44 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Build darwin/amd64 and darwin/arm64
+      - name: Install tooling
+        run: |
+          brew install librsvg
+          go install fyne.io/fyne/v2/cmd/fyne@latest
+
+      - name: Build macOS CLI + GUI and package .app
         run: |
           VERSION="${{ github.ref_name }}"
           COMMIT="$(git rev-parse --short HEAD)"
           BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           LDFLAGS="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.buildTime=${BUILD_TIME}"
+          APP_VERSION="${VERSION#v}"
+          BUNDLE_ID="io.github.danieldonoghue.pco2olp"
 
           mkdir -p dist
 
+          # CLI
           GOOS=darwin GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-darwin-amd64 .
           GOOS=darwin GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-darwin-arm64 .
 
-      # ── Optional: sign + notarize (only when Apple secrets are configured) ──
+          # GUI universal .app
+          ICON_PATH="$(pwd)/Icon.png"
+          rsvg-convert -w 1024 -h 1024 resources/app-icon.svg -o "${ICON_PATH}"
+          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -tags gui -ldflags "${LDFLAGS}" -o dist/_gui_arm64 .
+          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -tags gui -ldflags "${LDFLAGS}" -o dist/_gui_amd64 .
+          lipo -create dist/_gui_arm64 dist/_gui_amd64 -output dist/_gui_universal
+          rm -f dist/_gui_arm64 dist/_gui_amd64
+          ( cd dist && fyne package --executable _gui_universal --name pco2olp \
+            --appID "${BUNDLE_ID}" --appVersion "${APP_VERSION}" \
+            --icon "${ICON_PATH}" )
+          rm -f dist/_gui_universal
+          BUILD_DATE="${BUILD_TIME:0:10}"
+          printf '<html><body><p>Converts Planning Center Online service plans to OpenLP service files.</p><p>By <a href="https://github.com/danieldonoghue">Daniel Donoghue</a> &mdash; <a href="https://github.com/danieldonoghue/pco2olp">github.com/danieldonoghue/pco2olp</a></p><p>Build: %s &middot; %s</p></body></html>' \
+            "${COMMIT}" "${BUILD_DATE}" \
+            > dist/pco2olp.app/Contents/Resources/Credits.html
+          # .app is kept unzipped here so signing/notarization steps can operate on it.
+
+      # ── Optional: sign + notarize ──────────────────────────────────────────
       - name: Import signing certificate
         if: env.HAS_APPLE_CERT == 'true'
         env:
@@ -92,12 +175,9 @@ jobs:
         run: |
           IDENTITY="Developer ID Application: $(security find-identity -v -p codesigning | grep 'Developer ID' | head -1 | sed 's/.*"\(.*\)"/\1/')"
           for bin in dist/pco2olp-darwin-*; do
-            codesign --sign "${IDENTITY}" \
-              --options runtime \
-              --timestamp \
-              --verbose \
-              "${bin}"
+            codesign --sign "${IDENTITY}" --options runtime --timestamp --verbose "${bin}"
           done
+          codesign --sign "${IDENTITY}" --deep --options runtime --timestamp --verbose dist/pco2olp.app
 
       - name: Notarize binaries
         if: env.HAS_APPLE_CERT == 'true'
@@ -116,6 +196,21 @@ jobs:
               --wait
             rm "${zip_path}"
           done
+          zip_path="$RUNNER_TEMP/app-notarize.zip"
+          ditto -c -k --keepParent dist/pco2olp.app "${zip_path}"
+          xcrun notarytool submit "${zip_path}" \
+            --apple-id "${APPLE_NOTARIZATION_APPLE_ID}" \
+            --team-id "${APPLE_TEAM_ID}" \
+            --password "${APPLE_NOTARIZATION_PASSWORD}" \
+            --wait
+          rm "${zip_path}"
+          xcrun stapler staple dist/pco2olp.app
+
+      - name: Package .app bundle
+        run: |
+          VERSION="${{ github.ref_name }}"
+          ( cd dist && zip -r "pco2olp-gui-${VERSION}-darwin-universal.zip" pco2olp.app )
+          rm -rf dist/pco2olp.app
 
       - uses: actions/upload-artifact@v4
         with:
@@ -124,7 +219,7 @@ jobs:
 
   # ── Create GitHub release ──────────────────────────────────────────────────
   release:
-    needs: [build-linux-windows, build-macos]
+    needs: [build-cli-linux-windows, build-gui-linux, build-gui-windows, build-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -139,7 +234,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Auto-generate changelog from commits since last tag
           GENERATED=$(gh api repos/${{ github.repository }}/releases/generate-notes \
             -f tag_name="${{ github.ref_name }}" \
             --jq '.body' 2>/dev/null || echo "")

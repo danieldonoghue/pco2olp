@@ -71,7 +71,7 @@ func (c *Client) ListServiceTypes(ctx context.Context) ([]ServiceType, error) {
 func (c *Client) ListPlans(ctx context.Context, serviceTypeID string, opts ListPlansOpts) ([]Plan, error) {
 	path := fmt.Sprintf("/services/v2/service_types/%s/plans", serviceTypeID)
 	params := url.Values{
-		"order": {"sort_date"},
+		"order": {"-sort_date"},
 	}
 
 	if opts.AfterDate != nil {

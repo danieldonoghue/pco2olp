@@ -1,23 +1,36 @@
-## Installation
+## Downloads
 
-Download the binary for your platform from the assets below.
+### Graphical Interface (GUI)
 
-### macOS (Apple Silicon)
+| Platform | Download |
+|----------|----------|
+| macOS (Universal) | `pco2olp-gui-VERSION-darwin-universal.zip` — unzip and drag to Applications |
+| Windows | `pco2olp-gui-windows-amd64.exe` |
+| Linux (amd64) | `pco2olp-gui-linux-amd64` |
+
+### Command-Line (CLI)
+
+| Platform | Download |
+|----------|----------|
+| macOS (Apple Silicon) | `pco2olp-darwin-arm64` |
+| macOS (Intel) | `pco2olp-darwin-amd64` |
+| Windows | `pco2olp-windows-amd64.exe` |
+| Linux (amd64) | `pco2olp-linux-amd64` |
+| Linux (arm64) | `pco2olp-linux-arm64` |
+
+---
+
+## CLI Installation
+
+### macOS
 
 ```sh
-# Download
 curl -L -o pco2olp https://github.com/danieldonoghue/pco2olp/releases/latest/download/pco2olp-darwin-arm64
 chmod +x pco2olp
 sudo mv pco2olp /usr/local/bin/
 ```
 
-### macOS (Intel)
-
-```sh
-curl -L -o pco2olp https://github.com/danieldonoghue/pco2olp/releases/latest/download/pco2olp-darwin-amd64
-chmod +x pco2olp
-sudo mv pco2olp /usr/local/bin/
-```
+*(Replace `arm64` with `amd64` for Intel Macs.)*
 
 ### Windows
 
@@ -74,11 +87,11 @@ Delete `tokens.json` to force re-authentication (e.g. if you switch PCO accounts
 
 ## First-Run Setup
 
-### macOS — Gatekeeper (unsigned binary)
+### macOS — Gatekeeper
 
-> **Note:** If the release was built with code signing enabled (see repository secrets), this step is not needed.
+> **Note:** If the release was built with code signing enabled, this step is not needed.
 
-macOS will block the binary on first run because it is not notarized by Apple. To allow it:
+macOS will block unsigned binaries on first run. To allow it:
 
 **Option A — one-time terminal command (recommended):**
 ```sh
@@ -88,21 +101,19 @@ xattr -d com.apple.quarantine /usr/local/bin/pco2olp
 **Option B — via System Settings:**
 1. Run `pco2olp` once — macOS will show a "cannot be opened" alert.
 2. Open **System Settings → Privacy & Security**.
-3. Scroll down to the *Security* section and click **Allow Anyway** next to the `pco2olp` message.
-4. Run `pco2olp` again and click **Open** in the confirmation dialog.
+3. Scroll down to the *Security* section and click **Allow Anyway**.
+4. Run `pco2olp` again and click **Open**.
 
 ### macOS — Keynote Automation Permission
 
-`pco2olp` converts Keynote and PowerPoint files to slides using Keynote on macOS. On first use it will ask you to grant **Automation** permission so it can control Keynote.
-
-If you see a permission dialog — click **OK** to allow it. If you accidentally denied it:
+`pco2olp` converts Keynote and PowerPoint files to slides using Keynote on macOS. On first use it will ask you to grant **Automation** permission so it can control Keynote. Click **OK** to allow it. If you accidentally denied it:
 
 1. Open **System Settings → Privacy & Security → Automation**.
-2. Find **pco2olp** (or your terminal app) and enable **Keynote**.
+2. Find **pco2olp** and enable **Keynote**.
 
 ### macOS — PDF Conversion (pdftoppm)
 
-PDF files are converted using `pdftoppm` from [poppler](https://poppler.freedesktop.org/). Install it with Homebrew if you need PDF support:
+PDF files are converted using `pdftoppm` from [poppler](https://poppler.freedesktop.org/):
 
 ```sh
 brew install poppler
@@ -110,8 +121,8 @@ brew install poppler
 
 ### Windows — SmartScreen
 
-Windows may show a SmartScreen warning on first run. Click **More info → Run anyway** to proceed. This only appears once.
+Windows may show a SmartScreen warning on first run. Click **More info → Run anyway** to proceed.
 
 ### Windows — PowerPoint Automation
 
-`pco2olp` uses PowerPoint (via PowerShell COM automation) to convert `.pptx` files. Microsoft PowerPoint must be installed. If PowerPoint is not installed, `.pdf` files are still supported via `pdftoppm` (install `poppler` via [Scoop](https://scoop.sh/): `scoop install poppler`).
+`pco2olp` uses PowerPoint (via PowerShell COM automation) to convert `.pptx` files. Microsoft PowerPoint must be installed. PDFs are supported via `pdftoppm` (install via [Scoop](https://scoop.sh/): `scoop install poppler`).

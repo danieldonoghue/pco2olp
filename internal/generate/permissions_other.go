@@ -1,6 +1,6 @@
 //go:build !darwin
 
-package main
+package generate
 
 // requestPermissions is a no-op on non-macOS platforms.
 func requestPermissions() {}

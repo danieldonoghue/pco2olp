@@ -29,6 +29,20 @@ var (
 	defaultClientSecret = ""
 )
 
+// HasBakedInCredentials reports whether OAuth credentials were embedded at build time.
+func HasBakedInCredentials() bool {
+	return defaultClientID != ""
+}
+
+// ClearStoredToken deletes the persisted OAuth token, forcing a fresh login on next auth.
+func ClearStoredToken() error {
+	ts, err := NewTokenStore()
+	if err != nil {
+		return err
+	}
+	return ts.Delete()
+}
+
 // Authenticator manages the OAuth 2.0 flow with Planning Center.
 type Authenticator struct {
 	oauthConfig *oauth2.Config
