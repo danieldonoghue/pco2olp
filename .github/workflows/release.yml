@@ -145,8 +145,7 @@ jobs:
           printf '<html><body><p>Converts Planning Center Online service plans to OpenLP service files.</p><p>By <a href="https://github.com/danieldonoghue">Daniel Donoghue</a> &mdash; <a href="https://github.com/danieldonoghue/pco2olp">github.com/danieldonoghue/pco2olp</a></p><p>Build: %s &middot; %s</p></body></html>' \
             "${COMMIT}" "${BUILD_DATE}" \
             > dist/pco2olp.app/Contents/Resources/Credits.html
-          ( cd dist && zip -r "pco2olp-gui-${VERSION}-darwin-universal.zip" pco2olp.app )
-          rm -rf dist/pco2olp.app
+          # .app is kept unzipped here so signing/notarization steps can operate on it.
 
       # ── Optional: sign + notarize ──────────────────────────────────────────
       - name: Import signing certificate
@@ -178,6 +177,7 @@ jobs:
           for bin in dist/pco2olp-darwin-*; do
             codesign --sign "${IDENTITY}" --options runtime --timestamp --verbose "${bin}"
           done
+          codesign --sign "${IDENTITY}" --deep --options runtime --timestamp --verbose dist/pco2olp.app
 
       - name: Notarize binaries
         if: env.HAS_APPLE_CERT == 'true'
@@ -196,6 +196,21 @@ jobs:
               --wait
             rm "${zip_path}"
           done
+          zip_path="$RUNNER_TEMP/app-notarize.zip"
+          ditto -c -k --keepParent dist/pco2olp.app "${zip_path}"
+          xcrun notarytool submit "${zip_path}" \
+            --apple-id "${APPLE_NOTARIZATION_APPLE_ID}" \
+            --team-id "${APPLE_TEAM_ID}" \
+            --password "${APPLE_NOTARIZATION_PASSWORD}" \
+            --wait
+          rm "${zip_path}"
+          xcrun stapler staple dist/pco2olp.app
+
+      - name: Package .app bundle
+        run: |
+          VERSION="${{ github.ref_name }}"
+          ( cd dist && zip -r "pco2olp-gui-${VERSION}-darwin-universal.zip" pco2olp.app )
+          rm -rf dist/pco2olp.app
 
       - uses: actions/upload-artifact@v4
         with:
