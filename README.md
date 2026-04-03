@@ -170,6 +170,33 @@ Built for: My Church
 
 Environment variables (`PCO_CLIENT_ID`, `PCO_CLIENT_SECRET`) always take precedence over baked-in defaults, so users can still override if needed.
 
+## Releasing
+
+Releases are automated via GitHub Actions. Push a version tag to trigger a build for all platforms and a new GitHub release with installation notes.
+
+```bash
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+The workflow builds the generic (non-org) binaries. Organisation-specific builds are done locally with `make release-org`.
+
+### macOS Code Signing (optional)
+
+Without signing, macOS users need a one-time Gatekeeper bypass (see the release notes). To enable automatic signing and notarization, add these secrets to the repository (**Settings → Secrets and variables → Actions**):
+
+| Secret | Description |
+|--------|-------------|
+| `APPLE_CERTIFICATE_P12_BASE64` | Base64-encoded Developer ID Application `.p12` certificate |
+| `APPLE_CERTIFICATE_PASSWORD` | Password for the `.p12` file |
+| `APPLE_TEAM_ID` | Apple Developer Team ID |
+| `APPLE_NOTARIZATION_APPLE_ID` | Apple ID (email) used for notarization |
+| `APPLE_NOTARIZATION_PASSWORD` | App-specific password for the Apple ID |
+
+Encode the certificate: `base64 -i certificate.p12 | pbcopy`
+
+You need an [Apple Developer](https://developer.apple.com/) account ($99/year) and a **Developer ID Application** certificate. Once secrets are configured the release workflow signs and notarizes the macOS binaries automatically — no workflow changes needed.
+
 ## License
 
 MIT

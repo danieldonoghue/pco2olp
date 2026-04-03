@@ -84,21 +84,3 @@ Windows may show a SmartScreen warning on first run. Click **More info → Run a
 ### Windows — PowerPoint Automation
 
 `pco2olp` uses PowerPoint (via PowerShell COM automation) to convert `.pptx` files. Microsoft PowerPoint must be installed. If PowerPoint is not installed, `.pdf` files are still supported via `pdftoppm` (install `poppler` via [Scoop](https://scoop.sh/): `scoop install poppler`).
-
----
-
-## Code Signing (maintainers)
-
-To enable code signing and notarization for macOS builds, add the following secrets to the repository:
-
-| Secret | Description |
-|--------|-------------|
-| `APPLE_CERTIFICATE_P12_BASE64` | Base64-encoded Developer ID Application `.p12` certificate |
-| `APPLE_CERTIFICATE_PASSWORD` | Password for the `.p12` file |
-| `APPLE_TEAM_ID` | Apple Developer Team ID |
-| `APPLE_NOTARIZATION_APPLE_ID` | Apple ID (email) used for notarization |
-| `APPLE_NOTARIZATION_PASSWORD` | App-specific password for notarization |
-
-Generate the base64 value with: `base64 -i certificate.p12 | pbcopy`
-
-When these secrets are present the release workflow will automatically sign and notarize the macOS binaries, removing the need for the Gatekeeper workaround above.
