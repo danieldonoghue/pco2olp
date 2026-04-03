@@ -40,6 +40,8 @@ jobs:
   # ── macOS builds (native runner for optional code signing) ─────────────────
   build-macos:
     runs-on: macos-latest
+    env:
+      HAS_APPLE_CERT: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -61,7 +63,7 @@ jobs:
 
       # ── Optional: sign + notarize (only when Apple secrets are configured) ──
       - name: Import signing certificate
-        if: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 != '' }}
+        if: env.HAS_APPLE_CERT == 'true'
         env:
           CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
           CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -81,7 +83,7 @@ jobs:
             -s -k "temp-keychain-password" "${KEYCHAIN_PATH}"
 
       - name: Sign binaries
-        if: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 != '' }}
+        if: env.HAS_APPLE_CERT == 'true'
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
@@ -95,7 +97,7 @@ jobs:
           done
 
       - name: Notarize binaries
-        if: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 != '' }}
+        if: env.HAS_APPLE_CERT == 'true'
         env:
           APPLE_NOTARIZATION_APPLE_ID: ${{ secrets.APPLE_NOTARIZATION_APPLE_ID }}
           APPLE_NOTARIZATION_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_PASSWORD }}
