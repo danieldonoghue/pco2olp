@@ -25,6 +25,7 @@ var (
 	version   = "dev"
 	commit    = "unknown"
 	buildTime = "unknown"
+	orgName   = "" // set at build time via -X main.orgName=... for org-specific builds
 )
 
 func main() {
@@ -57,6 +58,9 @@ func main() {
 
 	if *showVersion {
 		fmt.Printf("pco2olp %s (commit: %s, built: %s)\n", version, commit, buildTime)
+		if orgName != "" {
+			fmt.Printf("Built for: %s\n", orgName)
+		}
 		os.Exit(0)
 	}
 

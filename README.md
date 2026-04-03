@@ -152,14 +152,21 @@ make clean          # Remove build artifacts
 
 ### Organisation Builds
 
-You can bake your PCO OAuth credentials into the binary so your org members don't need to set environment variables:
+You can bake your PCO OAuth credentials and organisation name into the binary so your org members don't need to set environment variables:
 
 ```bash
 # Build for current platform with embedded credentials
-make build-org PCO_CLIENT_ID=your-id PCO_CLIENT_SECRET=your-secret
+make build-org PCO_CLIENT_ID=your-id PCO_CLIENT_SECRET=your-secret ORG_NAME="My Church"
 
 # Cross-compile all platforms with embedded credentials
-make release-org PCO_CLIENT_ID=your-id PCO_CLIENT_SECRET=your-secret
+make release-org PCO_CLIENT_ID=your-id PCO_CLIENT_SECRET=your-secret ORG_NAME="My Church"
+```
+
+`ORG_NAME` is optional. When set, it appears in the version output:
+
+```
+pco2olp v1.2.0 (commit: abc1234, built: 2026-04-03T09:00:00Z)
+Built for: My Church
 ```
 
 Environment variables (`PCO_CLIENT_ID`, `PCO_CLIENT_SECRET`) always take precedence over baked-in defaults, so users can still override if needed.
