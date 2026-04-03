@@ -8,17 +8,14 @@ on:
 permissions:
   contents: write
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   # ── CLI: Linux + Windows (cross-compiled on ubuntu, no CGO) ────────────────
   build-cli-linux-windows:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
@@ -35,7 +32,7 @@ jobs:
           GOOS=linux   GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-linux-arm64   .
           GOOS=windows GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-windows-amd64.exe .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: binaries-cli-linux-windows
           path: dist/
@@ -44,9 +41,9 @@ jobs:
   build-gui-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
@@ -63,7 +60,7 @@ jobs:
           mkdir -p dist
           CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -tags gui -ldflags "${LDFLAGS}" -o dist/pco2olp-gui-linux-amd64 .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: binaries-gui-linux
           path: dist/
@@ -72,9 +69,9 @@ jobs:
   build-gui-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
@@ -93,7 +90,7 @@ jobs:
           mkdir -p dist
           CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -tags gui -ldflags "${LDFLAGS}" -o dist/pco2olp-gui-windows-amd64.exe .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: binaries-gui-windows
           path: dist/
@@ -104,9 +101,9 @@ jobs:
     env:
       HAS_APPLE_CERT: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
@@ -212,7 +209,7 @@ jobs:
           ( cd dist && zip -r "pco2olp-gui-${VERSION}-darwin-universal.zip" pco2olp.app )
           rm -rf dist/pco2olp.app
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: binaries-macos
           path: dist/
@@ -222,9 +219,9 @@ jobs:
     needs: [build-cli-linux-windows, build-gui-linux, build-gui-windows, build-macos]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: binaries-*
           merge-multiple: true
