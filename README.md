@@ -1,6 +1,14 @@
+<div align="center">
+
+<img src="resources/app-icon.svg" width="96" alt="pco2olp">
+
 # pco2olp
 
 Convert [Planning Center Online](https://www.planningcenteronline.com/) service plans to [OpenLP](https://openlp.org/) service files.
+
+</div>
+
+---
 
 A single-binary CLI tool that authenticates with the PCO API, fetches your service plan, and generates an `.osz` file you can open directly in OpenLP 3.x. No installation required — just download and run.
 
