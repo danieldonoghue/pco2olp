@@ -78,6 +78,10 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Add MinGW to PATH
+        shell: powershell
+        run: Add-Content $env:GITHUB_PATH "C:\msys64\mingw64\bin"
+
       - name: Build GUI windows/amd64
         shell: bash
         run: |
