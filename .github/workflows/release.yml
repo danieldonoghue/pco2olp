@@ -1,0 +1,159 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Linux + Windows builds (cross-compiled on ubuntu) ──────────────────────
+  build-linux-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build linux/amd64, linux/arm64, windows/amd64
+        run: |
+          VERSION="${{ github.ref_name }}"
+          COMMIT="$(git rev-parse --short HEAD)"
+          BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          LDFLAGS="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.buildTime=${BUILD_TIME}"
+
+          mkdir -p dist
+
+          GOOS=linux  GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-linux-amd64   .
+          GOOS=linux  GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-linux-arm64   .
+          GOOS=windows GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-windows-amd64.exe .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries-linux-windows
+          path: dist/
+
+  # ── macOS builds (native runner for optional code signing) ─────────────────
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build darwin/amd64 and darwin/arm64
+        run: |
+          VERSION="${{ github.ref_name }}"
+          COMMIT="$(git rev-parse --short HEAD)"
+          BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          LDFLAGS="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.buildTime=${BUILD_TIME}"
+
+          mkdir -p dist
+
+          GOOS=darwin GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-darwin-amd64 .
+          GOOS=darwin GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-darwin-arm64 .
+
+      # ── Optional: sign + notarize (only when Apple secrets are configured) ──
+      - name: Import signing certificate
+        if: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 != '' }}
+        env:
+          CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain"
+          CERT_PATH="$RUNNER_TEMP/certificate.p12"
+
+          echo "${CERTIFICATE_P12_BASE64}" | base64 --decode -o "${CERT_PATH}"
+
+          security create-keychain -p "temp-keychain-password" "${KEYCHAIN_PATH}"
+          security set-keychain-settings -lut 21600 "${KEYCHAIN_PATH}"
+          security unlock-keychain -p "temp-keychain-password" "${KEYCHAIN_PATH}"
+          security import "${CERT_PATH}" -k "${KEYCHAIN_PATH}" \
+            -P "${CERTIFICATE_PASSWORD}" -T /usr/bin/codesign
+          security list-keychain -d user -s "${KEYCHAIN_PATH}"
+          security set-key-partition-list -S apple-tool:,apple: \
+            -s -k "temp-keychain-password" "${KEYCHAIN_PATH}"
+
+      - name: Sign binaries
+        if: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 != '' }}
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          IDENTITY="Developer ID Application: $(security find-identity -v -p codesigning | grep 'Developer ID' | head -1 | sed 's/.*"\(.*\)"/\1/')"
+          for bin in dist/pco2olp-darwin-*; do
+            codesign --sign "${IDENTITY}" \
+              --options runtime \
+              --timestamp \
+              --verbose \
+              "${bin}"
+          done
+
+      - name: Notarize binaries
+        if: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 != '' }}
+        env:
+          APPLE_NOTARIZATION_APPLE_ID: ${{ secrets.APPLE_NOTARIZATION_APPLE_ID }}
+          APPLE_NOTARIZATION_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for bin in dist/pco2olp-darwin-*; do
+            zip_path="${bin}.zip"
+            ditto -c -k --keepParent "${bin}" "${zip_path}"
+            xcrun notarytool submit "${zip_path}" \
+              --apple-id "${APPLE_NOTARIZATION_APPLE_ID}" \
+              --team-id "${APPLE_TEAM_ID}" \
+              --password "${APPLE_NOTARIZATION_PASSWORD}" \
+              --wait
+            rm "${zip_path}"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries-macos
+          path: dist/
+
+  # ── Create GitHub release ──────────────────────────────────────────────────
+  release:
+    needs: [build-linux-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: binaries-*
+          merge-multiple: true
+          path: dist/
+
+      - name: Assemble release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Auto-generate changelog from commits since last tag
+          GENERATED=$(gh api repos/${{ github.repository }}/releases/generate-notes \
+            -f tag_name="${{ github.ref_name }}" \
+            --jq '.body' 2>/dev/null || echo "")
+
+          {
+            if [ -n "$GENERATED" ]; then
+              echo "$GENERATED"
+              echo ""
+              echo "---"
+              echo ""
+            fi
+            cat .github/release-notes-template.md
+          } > release-notes.md
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --notes-file release-notes.md \
+            dist/*
