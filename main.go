@@ -14,11 +14,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/danield/pco2olp/internal/auth"
-	"github.com/danield/pco2olp/internal/cache"
-	"github.com/danield/pco2olp/internal/convert"
-	"github.com/danield/pco2olp/internal/pco"
-	"github.com/danield/pco2olp/internal/slides"
+	"github.com/danieldonoghue/pco2olp/internal/auth"
+	"github.com/danieldonoghue/pco2olp/internal/cache"
+	"github.com/danieldonoghue/pco2olp/internal/convert"
+	"github.com/danieldonoghue/pco2olp/internal/pco"
+	"github.com/danieldonoghue/pco2olp/internal/slides"
 )
 
 var (

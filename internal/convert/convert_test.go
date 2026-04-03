@@ -3,8 +3,8 @@ package convert
 import (
 	"testing"
 
-	"github.com/danield/pco2olp/internal/cache"
-	"github.com/danield/pco2olp/internal/pco"
+	"github.com/danieldonoghue/pco2olp/internal/cache"
+	"github.com/danieldonoghue/pco2olp/internal/pco"
 )
 
 func TestPlanToServiceFile(t *testing.T) {

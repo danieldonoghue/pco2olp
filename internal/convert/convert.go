@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/danield/pco2olp/internal/cache"
-	"github.com/danield/pco2olp/internal/openlp"
-	"github.com/danield/pco2olp/internal/pco"
+	"github.com/danieldonoghue/pco2olp/internal/cache"
+	"github.com/danieldonoghue/pco2olp/internal/openlp"
+	"github.com/danieldonoghue/pco2olp/internal/pco"
 )
 
 // PlanToServiceFile converts PCO plan items into an OpenLP ServiceFile.

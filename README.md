@@ -42,22 +42,22 @@ pco2olp --service-type "Sunday Service" --list-plans
 pco2olp --service-type "Sunday Service" --list-plans --all
 
 # Preview a plan
-pco2olp --service-type "Sunday Service" --date 2026-04-05 --dry-run
+pco2olp --service-type "Sunday Service" --plan 2026-04-05 --dry-run
 
 # Generate an .osz file (defaults to <date>-<title>.osz)
-pco2olp --service-type "Sunday Service" --date 2026-04-05
+pco2olp --service-type "Sunday Service" --plan 2026-04-05
 
 # Generate by plan ID instead of date
-pco2olp --service-type "Sunday Service" --plan 87132676
+pco2olp --service-type "Sunday Service" --plan 12345678
 
 # Custom output filename
-pco2olp --service-type "Sunday Service" --date 2026-04-05 --output sunday.osz
+pco2olp --service-type "Sunday Service" --plan 2026-04-05 --output sunday.osz
 
 # Exclude section headers from the service
-pco2olp --service-type "Sunday Service" --date 2026-04-05 --no-headers
+pco2olp --service-type "Sunday Service" --plan 2026-04-05 --no-headers
 
 # Force re-download of all media (bypass cache)
-pco2olp --service-type "Sunday Service" --date 2026-04-05 --no-cache
+pco2olp --service-type "Sunday Service" --plan 2026-04-05 --no-cache
 
 # Show media cache info
 pco2olp --cache-info
@@ -68,7 +68,7 @@ pco2olp --clean-cache
 
 ## Installation
 
-Download the binary for your platform from the [releases page](https://github.com/danield/pco2olp/releases), or build from source:
+Download the binary for your platform from the [releases page](https://github.com/danieldonoghue/pco2olp/releases), or build from source:
 
 ```bash
 # Build for your current platform
@@ -126,8 +126,7 @@ Files are stored by SHA256 hash. The cache automatically detects when files have
 | Flag | Description |
 |------|-------------|
 | `--service-type <name\|id>` | Service type name (fuzzy match) or numeric ID |
-| `--plan <id>` | Plan ID (alternative to `--date`) |
-| `--date <YYYY-MM-DD>` | Plan date to generate |
+| `--plan <id\|YYYY-MM-DD>` | Plan ID or date to generate |
 | `--output <path>` | Output file path (default: `<date>-<title>.osz`) |
 | `--no-headers` | Exclude header items from the generated service |
 | `--no-cache` | Force re-download of all media (bypass cache) |

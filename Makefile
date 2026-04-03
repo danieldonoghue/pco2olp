@@ -6,7 +6,7 @@ LDFLAGS := -ldflags "-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -
 
 # For org-specific builds with baked-in OAuth credentials and org name:
 #   make build-org PCO_CLIENT_ID=xxx PCO_CLIENT_SECRET=yyy ORG_NAME="My Church"
-AUTH_PKG := github.com/danield/pco2olp/internal/auth
+AUTH_PKG := github.com/danieldonoghue/pco2olp/internal/auth
 ORG_LDFLAGS := -ldflags "-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildTime=$(BUILD_TIME) -X $(AUTH_PKG).defaultClientID=$(PCO_CLIENT_ID) -X $(AUTH_PKG).defaultClientSecret=$(PCO_CLIENT_SECRET) -X 'main.orgName=$(ORG_NAME)'"
 
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64

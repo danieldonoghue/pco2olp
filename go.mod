@@ -1,4 +1,4 @@
-module github.com/danield/pco2olp
+module github.com/danieldonoghue/pco2olp
 
 go 1.25.1
 
