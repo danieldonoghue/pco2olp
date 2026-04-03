@@ -41,6 +41,37 @@ sudo mv pco2olp /usr/local/bin/
 
 ---
 
+## Authentication
+
+`pco2olp` uses OAuth 2.0 to connect to your Planning Center account. You will need a PCO OAuth **Client ID** (and **Client Secret** for the generic build). See the [README](https://github.com/danieldonoghue/pco2olp#quick-start) for how to register a PCO application if you don't have one.
+
+### Setting your credentials
+
+```sh
+export PCO_CLIENT_ID="your-client-id"
+export PCO_CLIENT_SECRET="your-client-secret"
+```
+
+Add these to your shell profile (`~/.zprofile`, `~/.bashrc`, etc.) to avoid setting them each session. On Windows, set them as user environment variables via **System Properties → Environment Variables**.
+
+> If you are using an organisation-specific build provided by your church, credentials are already baked in — skip this step.
+
+### Logging in
+
+On first run, `pco2olp` will open your browser automatically and take you to the Planning Center login page. Log in with your PCO account, approve the access request, and the browser will redirect back to the tool. The terminal will confirm authentication and continue.
+
+Tokens are cached so you only need to do this once. They refresh automatically in the background.
+
+| Platform | Token location |
+|----------|----------------|
+| macOS    | `~/Library/Application Support/pco2olp/tokens.json` |
+| Linux    | `~/.config/pco2olp/tokens.json` |
+| Windows  | `%APPDATA%\pco2olp\tokens.json` |
+
+Delete `tokens.json` to force re-authentication (e.g. if you switch PCO accounts).
+
+---
+
 ## First-Run Setup
 
 ### macOS — Gatekeeper (unsigned binary)
