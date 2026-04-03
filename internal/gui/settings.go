@@ -200,8 +200,8 @@ func showSettingsDialog(win fyne.Window, a fyne.App, reauth func(func(error)), i
 	d.SetOnClosed(func() {
 		prefs.SetString("outputDir", outputDirEntry.Text)
 		if !bakedIn {
-			prefs.SetString("clientID", clientIDEntry.Text)
-			prefs.SetString("clientSecret", clientSecretEntry.Text)
+			prefs.SetString("clientID", strings.TrimSpace(clientIDEntry.Text))
+			prefs.SetString("clientSecret", strings.TrimSpace(clientSecretEntry.Text))
 		}
 	})
 	d.Resize(fyne.NewSize(500, 460))

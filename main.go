@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"time"
 
 	"github.com/danieldonoghue/pco2olp/internal/cache"
@@ -62,7 +64,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
 	switch {
@@ -177,7 +179,6 @@ func runListPlans(ctx context.Context, serviceType string, all bool, debug bool)
 	for i, p := range plans {
 		if !p.SortDate.Before(today) {
 			nextIdx = i
-			break
 		}
 	}
 
@@ -245,7 +246,7 @@ func runDryRun(ctx context.Context, serviceType, planRef string, noHeaders, debu
 	if len(attachments) > 0 {
 		fmt.Println("\nPlan attachments:")
 		for _, att := range attachments {
-			if att.FileSize == 0 || len(att.Filename) == 0 {
+			if att.FileSize == 0 || filepath.Ext(att.Filename) == "" {
 				fmt.Printf("  - %s (link, skipped)\n", att.Filename)
 			} else {
 				fmt.Printf("  - %s (%s, %s)\n", att.Filename, att.ContentType, generate.FormatSize(att.FileSize))

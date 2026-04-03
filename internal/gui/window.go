@@ -431,7 +431,11 @@ func (s *mainWindow) loadPlanItems(ctx context.Context) {
 		return
 	}
 
-	attachments, _ := s.client.GetPlanAttachments(ctx, s.selectedST.ID, s.selectedPlan.ID)
+	attachments, err := s.client.GetPlanAttachments(ctx, s.selectedST.ID, s.selectedPlan.ID)
+	if err != nil {
+		fyne.Do(func() { s.statusLabel.SetText("Warning: could not load plan attachments") })
+		attachments = nil
+	}
 
 	s.planItems = items
 	s.planAttachments = attachments
