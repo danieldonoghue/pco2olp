@@ -15,10 +15,11 @@ import (
 )
 
 var (
-	version   = "dev"
-	commit    = "unknown"
-	buildTime = "unknown"
-	orgName   = "" // set at build time via -X main.orgName=... for org-specific builds
+	version     = "dev"
+	docsVersion = "" // overridden in org builds to point to the upstream pco2olp version
+	commit      = "unknown"
+	buildTime   = "unknown"
+	orgName     = "" // set at build time via -X main.orgName=... for org-specific builds
 )
 
 func main() {

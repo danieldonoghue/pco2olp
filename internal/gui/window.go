@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"image/color"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,11 +28,12 @@ import (
 )
 
 type mainWindow struct {
-	win     fyne.Window
-	app     fyne.App
-	version string
-	orgName string
-	client  *pco.Client
+	win         fyne.Window
+	app         fyne.App
+	version     string
+	docsVersion string // if non-empty, used for Help URL instead of version
+	orgName     string
+	client      *pco.Client
 
 	serviceTypes    []pco.ServiceType
 	plans           []pco.Plan
@@ -59,12 +61,13 @@ type mainWindow struct {
 	statusLabel     *widget.Label
 }
 
-func newMainWindow(a fyne.App, title, version, orgName string) fyne.Window {
+func newMainWindow(a fyne.App, title, version, docsVersion, orgName string) fyne.Window {
 	w := a.NewWindow(title)
 	s := &mainWindow{
 		win:          w,
 		app:          a,
 		version:      version,
+		docsVersion:  docsVersion,
 		orgName:      orgName,
 		noHeaders:    true, // default: exclude headers
 		excludedItems: make(map[string]bool),
@@ -288,7 +291,34 @@ func (s *mainWindow) setupMenu() {
 	}
 
 	appMenu := fyne.NewMenu("", settingsItem)
-	s.win.SetMainMenu(fyne.NewMainMenu(appMenu))
+
+	helpMenu := fyne.NewMenu("Help",
+		fyne.NewMenuItem("User Guide", func() {
+			rawURL := s.docsURL()
+			u, err := url.Parse(rawURL)
+			if err != nil || u == nil || u.Host == "" {
+				dialog.ShowError(fmt.Errorf("invalid user guide URL: %s", rawURL), s.win)
+				return
+			}
+			s.app.OpenURL(u)
+		}),
+	)
+
+	s.win.SetMainMenu(fyne.NewMainMenu(appMenu, helpMenu))
+}
+
+// docsURL returns the versioned user guide URL.
+// Uses docsVersion if set (org builds), otherwise version.
+// Untagged/development builds map to "latest" since only release versions are deployed.
+func (s *mainWindow) docsURL() string {
+	v := s.docsVersion
+	if v == "" {
+		v = s.version
+	}
+	if v == "" || v == "dev" {
+		v = "latest"
+	}
+	return "https://danieldonoghue.github.io/pco2olp/" + v + "/"
 }
 
 // ── Auth & data loading ───────────────────────────────────────────────────────

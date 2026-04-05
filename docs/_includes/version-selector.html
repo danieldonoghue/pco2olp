@@ -1,0 +1,46 @@
+<div class="version-selector" style="padding: 0.5rem 1rem; border-top: 1px solid #e6e6e6; margin-top: 1rem;">
+  <label for="version-select" style="font-size: 0.75rem; color: #666; display: block; margin-bottom: 0.25rem;">Version</label>
+  <select id="version-select" style="font-size: 0.8rem; width: 100%; padding: 0.2rem;">
+    <option>Loading…</option>
+  </select>
+</div>
+
+<script>
+(function () {
+  var base = 'https://danieldonoghue.github.io/pco2olp';
+  var sel = document.getElementById('version-select');
+
+  // Detect current version from path: /pco2olp/vX.Y.Z/...
+  var match = window.location.pathname.match(/\/pco2olp\/(v[\d.]+)\//);
+  var current = match ? match[1] : 'latest';
+
+  fetch(base + '/versions.json')
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      sel.innerHTML = '';
+      var versions = data.versions || [];
+      // Prepend "latest" as an alias for the most recent
+      var items = ['latest'].concat(versions);
+      items.forEach(function (v) {
+        var opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = v === data.latest ? v + ' (latest)' : v;
+        if (v === current || (current === 'latest' && v === 'latest')) {
+          opt.selected = true;
+        }
+        sel.appendChild(opt);
+      });
+    })
+    .catch(function () {
+      sel.innerHTML = '<option>' + current + '</option>';
+    });
+
+  sel.addEventListener('change', function () {
+    var v = sel.value;
+    var dest = v === 'latest'
+      ? base + '/latest/'
+      : base + '/' + v + '/';
+    window.location.href = dest;
+  });
+})();
+</script>

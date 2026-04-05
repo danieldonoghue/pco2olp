@@ -9,6 +9,6 @@ import (
 )
 
 func runGUI() {
-	gui.Run(version, orgName)
+	gui.Run(version, docsVersion, orgName)
 	os.Exit(0)
 }

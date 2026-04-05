@@ -12,6 +12,8 @@ Convert [Planning Center Online](https://www.planningcenteronline.com/) service 
 
 A CLI tool and graphical app that authenticates with Planning Center Online, fetches your service plan, and generates an `.osz` file ready to open in OpenLP 3.x. Available as a GUI app for everyday use, or a CLI tool for scripting and automation. No installation required — just download and run.
 
+**[📖 User Guide](https://danieldonoghue.github.io/pco2olp/)** — full documentation including installation, authentication, and usage guides.
+
 ## Features
 
 - **Graphical interface** for macOS, Windows, and Linux — no command line needed
@@ -20,7 +22,7 @@ A CLI tool and graphical app that authenticates with Planning Center Online, fet
 - Generate `.osz` service files with songs (OpenLyrics XML), custom slides, images, media, and presentations
 - Automatically downloads and caches media from PCO (videos, images, presentations)
 - Preview service plans without generating files (dry-run mode)
-- Cross-platform: macOS (Intel + Apple Silicon), Linux (x86_64 + ARM64), Windows
+- Cross-platform: macOS (Intel + Apple Silicon), Linux (x86_64 + ARM64), Windows (x64 + ARM64)
 
 ## GUI
 
@@ -29,8 +31,9 @@ Download the app for your platform from the [releases page](https://github.com/d
 | Platform | Download |
 |----------|----------|
 | macOS (Universal) | `pco2olp-gui-<version>-darwin-universal.zip` — unzip and drag to Applications |
-| Windows | `pco2olp-gui-windows-amd64.exe` — double-click to launch |
-| Linux | `pco2olp-gui-linux-amd64` — run from terminal |
+| Windows (x64) | `pco2olp-gui-windows-amd64.exe` — double-click to launch |
+| Windows (arm64) | `pco2olp-gui-windows-arm64.exe` — double-click to launch |
+| Linux (x64) | `pco2olp-gui-linux-amd64` — run from terminal |
 
 The GUI launches automatically when run without arguments. It lets you pick a service type, browse plans, preview items and attachments, and generate the `.osz` file with a single click.
 
@@ -197,14 +200,30 @@ Environment variables (`PCO_CLIENT_ID`, `PCO_CLIENT_SECRET`) always take precede
 
 ## Releasing
 
-Releases are automated via GitHub Actions. Push a version tag to trigger a build for all platforms and a new GitHub release with installation notes.
+Releases are automated via GitHub Actions. Push a version tag to trigger a build for all platforms, a new GitHub release with installation notes, and deployment of the versioned user guide to GitHub Pages.
 
 ```bash
 git tag v1.2.0
 git push origin v1.2.0
 ```
 
-The workflow builds the generic (non-org) binaries. Organisation-specific builds are done locally with `make release-org`.
+The workflow produces:
+- CLI binaries for all platforms
+- GUI binaries (Linux x64, Windows x64/ARM64) and a macOS universal `.app` bundle
+- Versioned documentation deployed to `https://danieldonoghue.github.io/pco2olp/v1.2.0/`
+
+The root URL always redirects to the latest deployed version.
+
+### Documentation
+
+The user guide source lives in `docs/`. To preview locally:
+
+```bash
+cd docs
+bundle install
+bundle exec jekyll serve
+# Open http://localhost:4000/pco2olp/latest/
+```
 
 ### macOS Code Signing (optional)
 
