@@ -4,7 +4,9 @@ package gui
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"image/color"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,10 +14,12 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/storage"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/danieldonoghue/pco2olp/internal/generate"
@@ -40,6 +44,8 @@ type mainWindow struct {
 	showAllPlans bool
 	noHeaders    bool // true = exclude headers from generated service
 	noCache      bool
+	visibleList  []pco.Item      // planItems filtered by noHeaders; rebuilt on load/toggle
+	excludedItems map[string]bool // item.ID → true means excluded from generation
 
 	// widgets
 	stSelect        *widget.Select
@@ -47,18 +53,21 @@ type mainWindow struct {
 	itemList        *widget.List
 	attachmentList  *widget.List
 	outputEntry     *widget.Entry
+	noCacheCheck    *widget.Check
 	genButton       *widget.Button
+	genDropBtn      *widget.Button
 	statusLabel     *widget.Label
 }
 
 func newMainWindow(a fyne.App, title, version, orgName string) fyne.Window {
 	w := a.NewWindow(title)
 	s := &mainWindow{
-		win:       w,
-		app:       a,
-		version:   version,
-		orgName:   orgName,
-		noHeaders: true, // default: exclude headers
+		win:          w,
+		app:          a,
+		version:      version,
+		orgName:      orgName,
+		noHeaders:    true, // default: exclude headers
+		excludedItems: make(map[string]bool),
 	}
 	s.setupMenu()
 	w.SetContent(s.build())
@@ -97,27 +106,74 @@ func (s *mainWindow) build() fyne.CanvasObject {
 
 	// ── Items list ────────────────────────────────────────────────────────
 	s.itemList = widget.NewList(
-		func() int { return len(s.planItems) },
+		func() int { return len(s.visibleList) },
 		func() fyne.CanvasObject {
-			return container.NewHBox(
-				widget.NewIcon(iconItem),
-				widget.NewLabel("Item title placeholder"),
-			)
+			bg := canvas.NewRectangle(color.Transparent)
+			check := widget.NewCheck("", nil)
+			icon := widget.NewIcon(iconItem)
+			rt := widget.NewRichText(&widget.TextSegment{Style: widget.RichTextStyleInline, Text: "Item title placeholder"})
+			return container.NewStack(bg, container.NewHBox(check, icon, rt))
 		},
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			if id >= len(s.planItems) {
+			if id >= len(s.visibleList) {
 				return
 			}
-			row := obj.(*fyne.Container)
-			it := s.planItems[id]
-			row.Objects[0].(*widget.Icon).SetResource(itemTypeIcon(it.ItemType))
-			row.Objects[1].(*widget.Label).SetText(it.Title)
+			item := s.visibleList[id]
+			stack := obj.(*fyne.Container)
+			bg := stack.Objects[0].(*canvas.Rectangle)
+			row := stack.Objects[1].(*fyne.Container)
+			check := row.Objects[0].(*widget.Check)
+			icon := row.Objects[1].(*widget.Icon)
+			rt := row.Objects[2].(*widget.RichText)
+
+			icon.SetResource(itemTypeIcon(item.ItemType))
+
+			if item.ItemType == "header" {
+				sel := theme.Color(theme.ColorNameSelection)
+				r, g, b, _ := sel.RGBA()
+				bg.FillColor = color.NRGBA{R: uint8(r >> 8), G: uint8(g >> 8), B: uint8(b >> 8), A: 50}
+				rt.Segments = []widget.RichTextSegment{&widget.TextSegment{Style: widget.RichTextStyleStrong, Text: item.Title}}
+			} else {
+				bg.FillColor = color.Transparent
+				rt.Segments = []widget.RichTextSegment{&widget.TextSegment{Style: widget.RichTextStyleInline, Text: item.Title}}
+			}
+			bg.Refresh()
+			rt.Refresh()
+
+			check.OnChanged = nil
+			check.SetChecked(!s.excludedItems[item.ID])
+			itemID := item.ID
+			check.OnChanged = func(v bool) {
+				if v {
+					delete(s.excludedItems, itemID)
+				} else {
+					s.excludedItems[itemID] = true
+				}
+				s.updateGenButton()
+			}
 		},
 	)
 
 	itemsLabel := widget.NewLabel("Service items:")
 	itemsLabel.TextStyle = fyne.TextStyle{Bold: true}
-	itemsSection := container.NewBorder(itemsLabel, nil, nil, nil, s.itemList)
+	allBtn := widget.NewButton("All", func() {
+		for _, it := range s.visibleList {
+			delete(s.excludedItems, it.ID)
+		}
+		s.itemList.Refresh()
+		s.updateGenButton()
+	})
+	allBtn.Importance = widget.LowImportance
+	noneBtn := widget.NewButton("None", func() {
+		for _, it := range s.visibleList {
+			s.excludedItems[it.ID] = true
+		}
+		s.itemList.Refresh()
+		s.updateGenButton()
+	})
+	noneBtn.Importance = widget.LowImportance
+	itemsHeader := container.NewBorder(nil, nil, itemsLabel, container.NewHBox(noneBtn, allBtn), nil)
+	itemsSection := container.NewBorder(itemsHeader, nil, nil, nil, s.itemList)
 
 	// ── Plan attachments list ─────────────────────────────────────────────
 	s.attachmentList = widget.NewList(
@@ -156,17 +212,52 @@ func (s *mainWindow) build() fyne.CanvasObject {
 	// noHeaders defaults true, so "Include headers" is unchecked by default.
 	headersCheck := widget.NewCheck("Include headers", func(v bool) {
 		s.noHeaders = !v
+		if v {
+			// headers now visible — reset all header items to included
+			for _, it := range s.planItems {
+				if it.ItemType == "header" {
+					delete(s.excludedItems, it.ID)
+				}
+			}
+		}
+		s.rebuildVisibleList()
+		s.itemList.Refresh()
+		s.updateGenButton()
 	})
 	headersCheck.SetChecked(false)
 
-	noCacheCheck := widget.NewCheck("Re-download media", func(v bool) {
+	noCacheCheck := widget.NewCheck("Re-download existing media", func(v bool) {
 		s.noCache = v
 	})
+	s.noCacheCheck = noCacheCheck
+	if !s.app.Preferences().BoolWithFallback("downloadMediaDefault", true) {
+		noCacheCheck.Disable()
+	}
 
-	// ── Generate button ───────────────────────────────────────────────────
+	// ── Generate button (split: main action + alternative dropdown) ────────
 	s.genButton = widget.NewButton("Generate Service File", s.runGenerate)
 	s.genButton.Importance = widget.HighImportance
 	s.genButton.Disable()
+
+	s.genDropBtn = widget.NewButtonWithIcon("", theme.MenuDropDownIcon(), func() {
+		altExternal := !s.app.Preferences().BoolWithFallback("externalMediaEnabled", false)
+		var label string
+		if altExternal {
+			label = "Generate with external media"
+		} else {
+			label = "Generate with embedded media"
+		}
+		menu := fyne.NewMenu("", fyne.NewMenuItem(label, func() {
+			s.runGenerateMode(altExternal)
+		}))
+		pos := s.app.Driver().AbsolutePositionForObject(s.genDropBtn)
+		widget.ShowPopUpMenuAtPosition(menu, s.win.Canvas(),
+			fyne.NewPos(pos.X, pos.Y+s.genDropBtn.Size().Height))
+	})
+	s.genDropBtn.Importance = widget.HighImportance
+	s.genDropBtn.Disable()
+
+	genRow := container.NewBorder(nil, nil, nil, s.genDropBtn, s.genButton)
 
 	// ── Status label ──────────────────────────────────────────────────────
 	s.statusLabel = widget.NewLabel("Connecting to Planning Center…")
@@ -177,7 +268,7 @@ func (s *mainWindow) build() fyne.CanvasObject {
 		widget.NewSeparator(),
 		widget.NewForm(widget.NewFormItem("Output", outputRow)),
 		container.NewHBox(headersCheck, noCacheCheck),
-		s.genButton,
+		genRow,
 		s.statusLabel,
 	)
 	return container.NewBorder(nil, bottom, nil, nil,
@@ -189,7 +280,7 @@ func (s *mainWindow) build() fyne.CanvasObject {
 
 func (s *mainWindow) setupMenu() {
 	settingsItem := fyne.NewMenuItem("Settings…", func() {
-		showSettingsDialog(s.win, s.app, s.reauthenticate, s.client != nil)
+		showSettingsDialog(s.win, s.app, s.reauthenticate, s.client != nil, s.updateNoCacheCheck)
 	})
 	settingsItem.Shortcut = &desktop.CustomShortcut{
 		KeyName:  fyne.KeyComma,
@@ -248,9 +339,12 @@ func (s *mainWindow) reauthenticate(onDone func(error)) {
 		s.planSelect.Refresh()
 		s.planItems = nil
 		s.planAttachments = nil
+		s.excludedItems = make(map[string]bool)
+		s.rebuildVisibleList()
 		s.itemList.Refresh()
 		s.attachmentList.Refresh()
 		s.genButton.Disable()
+		s.genDropBtn.Disable()
 	})
 	go s.authenticate(context.Background(), onDone)
 }
@@ -293,7 +387,10 @@ func (s *mainWindow) onServiceTypeSelected(name string) {
 	s.planItems = nil
 	s.planAttachments = nil
 	s.selectedPlan = nil
+	s.excludedItems = make(map[string]bool)
+	s.rebuildVisibleList()
 	s.genButton.Disable()
+	s.genDropBtn.Disable()
 	s.itemList.Refresh()
 	s.attachmentList.Refresh()
 	s.planSelect.Options = nil
@@ -405,6 +502,7 @@ func (s *mainWindow) onPlanSelected(name string) {
 	s.planItems = nil
 	s.itemList.Refresh()
 	s.genButton.Disable()
+	s.genDropBtn.Disable()
 
 	outputDir := s.app.Preferences().String("outputDir")
 	if outputDir == "" {
@@ -437,12 +535,14 @@ func (s *mainWindow) loadPlanItems(ctx context.Context) {
 		attachments = nil
 	}
 
-	s.planItems = items
-	s.planAttachments = attachments
 	fyne.Do(func() {
+		s.planItems = items
+		s.planAttachments = attachments
+		s.excludedItems = make(map[string]bool)
+		s.rebuildVisibleList()
 		s.itemList.Refresh()
 		s.attachmentList.Refresh()
-		s.genButton.Enable()
+		s.updateGenButton()
 		s.statusLabel.SetText(fmt.Sprintf("Ready — %d items, %d attachments", len(items), len(attachments)))
 	})
 }
@@ -450,6 +550,10 @@ func (s *mainWindow) loadPlanItems(ctx context.Context) {
 // ── Generate ──────────────────────────────────────────────────────────────────
 
 func (s *mainWindow) runGenerate() {
+	s.runGenerateMode(s.app.Preferences().BoolWithFallback("externalMediaEnabled", false))
+}
+
+func (s *mainWindow) runGenerateMode(useExternal bool) {
 	if s.selectedST == nil || s.selectedPlan == nil || s.client == nil {
 		return
 	}
@@ -460,11 +564,19 @@ func (s *mainWindow) runGenerate() {
 	}
 
 	cfg := generate.Config{
-		ServiceTypeID: s.selectedST.ID,
-		PlanID:        s.selectedPlan.ID,
-		OutputPath:    output,
-		NoHeaders:     s.noHeaders,
-		NoCache:       s.noCache,
+		ServiceTypeID:    s.selectedST.ID,
+		PlanID:           s.selectedPlan.ID,
+		OutputPath:       output,
+		NoHeaders:        s.noHeaders,
+		NoCache:          s.noCache,
+		NoMedia:          !s.app.Preferences().BoolWithFallback("downloadMediaDefault", true),
+		ExcludedItems:    s.buildExcludedList(),
+		ExternalMedia:    useExternal,
+		ExternalMediaDir: s.app.Preferences().String("externalMediaDir"),
+	}
+	if cfg.ExternalMedia && cfg.ExternalMediaDir == "" {
+		dialog.ShowError(errors.New("External media folder is enabled but no folder is configured.\nSet it in Settings → Media."), s.win)
+		return
 	}
 
 	// Overwrite check
@@ -490,6 +602,7 @@ func (s *mainWindow) doGenerate(cfg generate.Config) {
 	d.Resize(fyne.NewSize(420, 140))
 	d.Show()
 	s.genButton.Disable()
+	s.genDropBtn.Disable()
 
 	go func() {
 		outPath, err := generate.Run(context.Background(), s.client, cfg, func(msg string) {
@@ -497,7 +610,7 @@ func (s *mainWindow) doGenerate(cfg generate.Config) {
 		})
 		fyne.Do(func() {
 			d.Hide()
-			s.genButton.Enable()
+			s.updateGenButton()
 			if err != nil {
 				dialog.ShowError(fmt.Errorf("generation failed: %w", err), s.win)
 				return
@@ -566,5 +679,70 @@ func (s *mainWindow) browseOutput() {
 		}
 	}
 	d.Show()
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+func (s *mainWindow) rebuildVisibleList() {
+	if s.noHeaders {
+		result := make([]pco.Item, 0, len(s.planItems))
+		for _, it := range s.planItems {
+			if it.ItemType != "header" {
+				result = append(result, it)
+			}
+		}
+		s.visibleList = result
+	} else {
+		s.visibleList = s.planItems
+	}
+}
+
+func (s *mainWindow) buildExcludedList() []string {
+	ids := make([]string, 0, len(s.excludedItems))
+	for id := range s.excludedItems {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+// updateNoCacheCheck syncs the re-download checkbox with the downloadMediaDefault pref.
+// Must be called on the UI goroutine.
+func (s *mainWindow) updateNoCacheCheck() {
+	if s.noCacheCheck == nil {
+		return
+	}
+	if s.app.Preferences().BoolWithFallback("downloadMediaDefault", true) {
+		s.noCacheCheck.Enable()
+	} else {
+		s.noCacheCheck.SetChecked(false)
+		s.noCache = false
+		s.noCacheCheck.Disable()
+	}
+	s.updateGenButton()
+}
+
+// updateGenButton enables the generate button only when there is something to
+// generate: at least one visible item is included, or there are plan attachments.
+// Must be called on the UI goroutine.
+func (s *mainWindow) updateGenButton() {
+	if s.selectedPlan == nil || s.client == nil {
+		s.genButton.Disable()
+		s.genDropBtn.Disable()
+		return
+	}
+	for _, it := range s.visibleList {
+		if !s.excludedItems[it.ID] {
+			s.genButton.Enable()
+			s.genDropBtn.Enable()
+			return
+		}
+	}
+	if len(s.planAttachments) > 0 && s.app.Preferences().BoolWithFallback("downloadMediaDefault", true) {
+		s.genButton.Enable()
+		s.genDropBtn.Enable()
+		return
+	}
+	s.genButton.Disable()
+	s.genDropBtn.Disable()
 }
 

@@ -55,7 +55,7 @@ How sweet the sound`,
 		},
 	}
 
-	sf := PlanToServiceFile(items, nil, nil)
+	sf := PlanToServiceFile(items, nil, nil, nil)
 
 	if len(sf.Items) != 4 {
 		t.Fatalf("expected 4 items, got %d", len(sf.Items))
@@ -114,7 +114,7 @@ func TestMediaWithDownloadedFile(t *testing.T) {
 		},
 	}
 
-	sf := PlanToServiceFile(items, mediaMap, nil)
+	sf := PlanToServiceFile(items, mediaMap, nil, nil)
 	if len(sf.Items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(sf.Items))
 	}
@@ -142,7 +142,7 @@ func TestImageMediaType(t *testing.T) {
 			PCOMediaType: "background_image", LocalPath: "/tmp/def456.jpg",
 		},
 	}
-	sf := PlanToServiceFile(items, mediaMap, nil)
+	sf := PlanToServiceFile(items, mediaMap, nil, nil)
 	if sf.Items[0].Header.Plugin != "images" {
 		t.Errorf("expected images plugin, got %s", sf.Items[0].Header.Plugin)
 	}
@@ -161,7 +161,7 @@ func TestSongWithNoLyrics(t *testing.T) {
 		},
 	}
 
-	sf := PlanToServiceFile(items, nil, nil)
+	sf := PlanToServiceFile(items, nil, nil, nil)
 	if len(sf.Items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(sf.Items))
 	}
@@ -181,7 +181,7 @@ func TestCustomItemPrefersHTMLDetails(t *testing.T) {
 		},
 	}
 
-	sf := PlanToServiceFile(items, nil, nil)
+	sf := PlanToServiceFile(items, nil, nil, nil)
 	if len(sf.Items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(sf.Items))
 	}
@@ -208,7 +208,7 @@ func TestCustomItemSlidesSplitOnDivider(t *testing.T) {
 		},
 	}
 
-	sf := PlanToServiceFile(items, nil, nil)
+	sf := PlanToServiceFile(items, nil, nil, nil)
 	if len(sf.Items[0].Data) != 3 {
 		t.Fatalf("expected 3 slides, got %d", len(sf.Items[0].Data))
 	}
@@ -230,7 +230,7 @@ func TestCustomItemFallsBackToDescription(t *testing.T) {
 		},
 	}
 
-	sf := PlanToServiceFile(items, nil, nil)
+	sf := PlanToServiceFile(items, nil, nil, nil)
 	if sf.Items[0].Data[0].RawSlide != "Remember the potluck" {
 		t.Errorf("expected description as body, got %q", sf.Items[0].Data[0].RawSlide)
 	}
@@ -245,7 +245,7 @@ func TestCustomItemFallsBackToTitle(t *testing.T) {
 		},
 	}
 
-	sf := PlanToServiceFile(items, nil, nil)
+	sf := PlanToServiceFile(items, nil, nil, nil)
 	if sf.Items[0].Data[0].RawSlide != "Offering" {
 		t.Errorf("expected title as fallback, got %q", sf.Items[0].Data[0].RawSlide)
 	}
@@ -272,6 +272,67 @@ func TestHTMLToOpenLPItalics(t *testing.T) {
 		t.Errorf("expected em converted, got %q", got)
 	}
 }
+
+func TestExternalOverrideForItemMedia(t *testing.T) {
+	items := []pco.Item{
+		{ID: "1", Title: "Worship Video", ItemType: "media"},
+	}
+	mediaMap := map[string]*cache.MediaFile{
+		"1": {
+			SHA256: "abc123", OriginalFilename: "worship.mp4",
+			LocalPath: "/tmp/abc123.mp4", Extension: ".mp4",
+			ContentType: "video/mp4", PCOMediaType: "video",
+		},
+	}
+	overrides := map[string]string{"abc123": "See worship.mp4 in media folder"}
+
+	sf := PlanToServiceFile(items, mediaMap, nil, overrides)
+	if len(sf.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(sf.Items))
+	}
+	// Should be a custom note, not an embedded media item.
+	if sf.Items[0].Header.Plugin != "custom" {
+		t.Errorf("expected custom plugin for external note, got %q", sf.Items[0].Header.Plugin)
+	}
+	if sf.Items[0].Header.Type != 1 {
+		t.Errorf("expected type 1 (text), got %d", sf.Items[0].Header.Type)
+	}
+	if !contains(sf.Items[0].Data[0].RawSlide, "media folder") {
+		t.Errorf("expected override note in slide body, got %q", sf.Items[0].Data[0].RawSlide)
+	}
+	if len(sf.MediaFiles) != 0 {
+		t.Error("expected no embedded media files when override is present")
+	}
+}
+
+func TestExternalOverrideForPlanAttachment(t *testing.T) {
+	planMedia := []*cache.MediaFile{
+		{
+			SHA256: "def456", OriginalFilename: "background.jpg",
+			LocalPath: "/tmp/def456.jpg", Extension: ".jpg",
+			ContentType: "image/jpeg", PCOMediaType: "background_image",
+		},
+	}
+	overrides := map[string]string{"def456": "See background.jpg in media folder"}
+
+	sf := PlanToServiceFile(nil, nil, planMedia, overrides)
+	if len(sf.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(sf.Items))
+	}
+	if sf.Items[0].Header.Plugin != "custom" {
+		t.Errorf("expected custom plugin for external attachment note, got %q", sf.Items[0].Header.Plugin)
+	}
+	if !contains(sf.Items[0].Header.Title, "background.jpg") {
+		t.Errorf("expected attachment filename in title, got %q", sf.Items[0].Header.Title)
+	}
+	if !contains(sf.Items[0].Data[0].RawSlide, "media folder") {
+		t.Errorf("expected override note in slide body, got %q", sf.Items[0].Data[0].RawSlide)
+	}
+	if len(sf.MediaFiles) != 0 {
+		t.Error("expected no embedded media files when override is present")
+	}
+}
+
 
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && containsStr(s, substr)
