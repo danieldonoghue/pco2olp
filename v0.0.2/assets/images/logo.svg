@@ -1,0 +1,13 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="220" fill="#2563EB"/>
+
+  <!-- Screen -->
+  <rect x="212" y="260" width="600" height="360" rx="40" fill="white"/>
+
+  <!-- Play triangle -->
+  <polygon points="460,350 460,530 620,440" fill="#2563EB"/>
+
+  <!-- Text lines (represent planning/service content) -->
+  <rect x="300" y="660" width="420" height="40" rx="20" fill="white" opacity="0.9"/>
+  <rect x="360" y="720" width="300" height="40" rx="20" fill="white" opacity="0.7"/>
+</svg>

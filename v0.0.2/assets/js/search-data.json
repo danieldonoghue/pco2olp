@@ -113,7 +113,7 @@
   },"16": {
     "doc": "Introduction",
     "title": "Introduction",
-    "content": " ",
+    "content": ". ",
     "url": "/pco2olp/v0.0.2/",
     
     "relUrl": "/"
@@ -181,83 +181,76 @@
     
     "relUrl": "/settings.html#media"
   },"26": {
-    "doc": "Settings",
-    "title": "Local preview (developer)",
-    "content": "To preview the documentation locally, run from the docs/ directory: . bundle install bundle exec jekyll serve . Then open http://localhost:4000/pco2olp/latest/. ",
-    "url": "/pco2olp/v0.0.2/settings.html#local-preview-developer",
-    
-    "relUrl": "/settings.html#local-preview-developer"
-  },"27": {
     "doc": "Using the App",
     "title": "Using the App",
     "content": " ",
     "url": "/pco2olp/v0.0.2/usage.html",
     
     "relUrl": "/usage.html"
-  },"28": {
+  },"27": {
     "doc": "Using the App",
     "title": "Launching",
     "content": "Open pco2olp from your Applications folder (macOS), Start menu (Windows), or by running the binary (Linux). On first launch, your browser will open for authentication. See Authentication for details. ",
     "url": "/pco2olp/v0.0.2/usage.html#launching",
     
     "relUrl": "/usage.html#launching"
-  },"29": {
+  },"28": {
     "doc": "Using the App",
     "title": "Main window",
     "content": "The main window has three sections: . | Top — service type and plan selectors | Centre — service items list and plan attachments list | Bottom — output path, options, and the Generate button | . 📸 Screenshot: main window with a plan loaded and items visible. ",
     "url": "/pco2olp/v0.0.2/usage.html#main-window",
     
     "relUrl": "/usage.html#main-window"
-  },"30": {
+  },"29": {
     "doc": "Using the App",
     "title": "Selecting a service type",
     "content": "Use the Service type dropdown to pick the Planning Center service type (e.g. “Sunday Morning”, “Youth”). The list is populated automatically once you are authenticated. ",
     "url": "/pco2olp/v0.0.2/usage.html#selecting-a-service-type",
     
     "relUrl": "/usage.html#selecting-a-service-type"
-  },"31": {
+  },"30": {
     "doc": "Using the App",
     "title": "Selecting a plan",
     "content": "Once a service type is selected, recent and upcoming plans appear in the Plan dropdown. The next upcoming service is selected automatically. To see older plans, check Show all. ",
     "url": "/pco2olp/v0.0.2/usage.html#selecting-a-plan",
     
     "relUrl": "/usage.html#selecting-a-plan"
-  },"32": {
+  },"31": {
     "doc": "Using the App",
     "title": "Service items",
     "content": "The items list shows all items in the selected plan: . | Headers are shown with a bold label and a shaded background | Songs, media, presentations, and custom items are shown with their type icon | . Each item has a checkbox — uncheck any items you want to exclude from the generated service file. Use All and None buttons to select or deselect everything at once. Including headers . By default, header items are hidden. Check Include headers to show them in the list. When Include headers is turned on, all header items are set to included. You can then uncheck individual headers you do not want. ",
     "url": "/pco2olp/v0.0.2/usage.html#service-items",
     
     "relUrl": "/usage.html#service-items"
-  },"33": {
+  },"32": {
     "doc": "Using the App",
     "title": "Plan attachments",
     "content": "Files attached to the plan itself (rather than to individual items) appear in the Plan attachments section. These are always included. ",
     "url": "/pco2olp/v0.0.2/usage.html#plan-attachments",
     
     "relUrl": "/usage.html#plan-attachments"
-  },"34": {
+  },"33": {
     "doc": "Using the App",
     "title": "Output path",
     "content": "The output path is automatically set to your configured output folder (or your home directory) with a filename of YYYY-MM-DD-Title.osz. Click Browse… to pick a different location or filename. ",
     "url": "/pco2olp/v0.0.2/usage.html#output-path",
     
     "relUrl": "/usage.html#output-path"
-  },"35": {
+  },"34": {
     "doc": "Using the App",
     "title": "Options",
     "content": "| Option | Description | . | Include headers | Show and optionally include header items | . | Re-download existing media | Bypass the media cache and re-download all files from Planning Center | . “Re-download existing media” is only available when “Download missing media” is enabled in Settings. ",
     "url": "/pco2olp/v0.0.2/usage.html#options",
     
     "relUrl": "/usage.html#options"
-  },"36": {
+  },"35": {
     "doc": "Using the App",
     "title": "Generating the service file",
     "content": "Click Generate Service File to produce the .osz file. A progress dialog shows each step: authenticating, fetching items, downloading media, converting presentations, and writing the file. When complete, a dialog shows the filename and size. Click Show in Finder (macOS) or Show in Explorer (Windows) to reveal the file. Alternative media mode . The dropdown arrow (▾) next to the Generate button offers an alternative: . | If your default is embedded media, the dropdown offers Generate with external media | If your default is external media, the dropdown offers Generate with embedded media | . See Settings → Media for how to set your default. ",
     "url": "/pco2olp/v0.0.2/usage.html#generating-the-service-file",
     
     "relUrl": "/usage.html#generating-the-service-file"
-  },"37": {
+  },"36": {
     "doc": "Using the App",
     "title": "Opening in OpenLP",
     "content": "Open OpenLP and use File → Open Service (or drag the .osz file onto OpenLP) to load the generated service. ",
