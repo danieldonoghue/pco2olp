@@ -1,0 +1,104 @@
+<h1 id="using-the-app">Using the App</h1>
+
+<h2 id="launching">Launching</h2>
+
+<p>Open pco2olp from your Applications folder (macOS), Start menu (Windows), or by running the binary (Linux).</p>
+
+<p>On first launch, your browser will open for authentication. See <a href="authentication">Authentication</a> for details.</p>
+
+<h2 id="main-window">Main window</h2>
+
+<p>The main window has three sections:</p>
+
+<ul>
+  <li><strong>Top</strong> — service type and plan selectors</li>
+  <li><strong>Centre</strong> — service items list and plan attachments list</li>
+  <li><strong>Bottom</strong> — output path, options, and the Generate button</li>
+</ul>
+
+<p class="note">📸 <em>Screenshot: main window with a plan loaded and items visible.</em></p>
+
+<h2 id="selecting-a-service-type">Selecting a service type</h2>
+
+<p>Use the <strong>Service type</strong> dropdown to pick the Planning Center service type (e.g. “Sunday Morning”, “Youth”). The list is populated automatically once you are authenticated.</p>
+
+<h2 id="selecting-a-plan">Selecting a plan</h2>
+
+<p>Once a service type is selected, recent and upcoming plans appear in the <strong>Plan</strong> dropdown. The next upcoming service is selected automatically.</p>
+
+<p>To see older plans, check <strong>Show all</strong>.</p>
+
+<h2 id="service-items">Service items</h2>
+
+<p>The items list shows all items in the selected plan:</p>
+
+<ul>
+  <li><strong>Headers</strong> are shown with a bold label and a shaded background</li>
+  <li><strong>Songs</strong>, <strong>media</strong>, <strong>presentations</strong>, and <strong>custom items</strong> are shown with their type icon</li>
+</ul>
+
+<p>Each item has a checkbox — uncheck any items you want to exclude from the generated service file.</p>
+
+<p>Use <strong>All</strong> and <strong>None</strong> buttons to select or deselect everything at once.</p>
+
+<h3 id="including-headers">Including headers</h3>
+
+<p>By default, header items are hidden. Check <strong>Include headers</strong> to show them in the list.</p>
+
+<p>When Include headers is turned on, all header items are set to included. You can then uncheck individual headers you do not want.</p>
+
+<h2 id="plan-attachments">Plan attachments</h2>
+
+<p>Files attached to the plan itself (rather than to individual items) appear in the <strong>Plan attachments</strong> section. These are always included.</p>
+
+<h2 id="output-path">Output path</h2>
+
+<p>The output path is automatically set to your configured output folder (or your home directory) with a filename of <code class="language-plaintext highlighter-rouge">YYYY-MM-DD-Title.osz</code>.</p>
+
+<p>Click <strong>Browse…</strong> to pick a different location or filename.</p>
+
+<h2 id="options">Options</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Option</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Include headers</strong></td>
+      <td>Show and optionally include header items</td>
+    </tr>
+    <tr>
+      <td><strong>Re-download existing media</strong></td>
+      <td>Bypass the media cache and re-download all files from Planning Center</td>
+    </tr>
+  </tbody>
+</table>
+
+<p class="note">“Re-download existing media” is only available when “Download missing media” is enabled in Settings.</p>
+
+<h2 id="generating-the-service-file">Generating the service file</h2>
+
+<p>Click <strong>Generate Service File</strong> to produce the <code class="language-plaintext highlighter-rouge">.osz</code> file.</p>
+
+<p>A progress dialog shows each step: authenticating, fetching items, downloading media, converting presentations, and writing the file.</p>
+
+<p>When complete, a dialog shows the filename and size. Click <strong>Show in Finder</strong> (macOS) or <strong>Show in Explorer</strong> (Windows) to reveal the file.</p>
+
+<h3 id="alternative-media-mode">Alternative media mode</h3>
+
+<p>The dropdown arrow (▾) next to the Generate button offers an alternative:</p>
+
+<ul>
+  <li>If your default is <strong>embedded media</strong>, the dropdown offers <strong>Generate with external media</strong></li>
+  <li>If your default is <strong>external media</strong>, the dropdown offers <strong>Generate with embedded media</strong></li>
+</ul>
+
+<p>See <a href="settings#media">Settings → Media</a> for how to set your default.</p>
+
+<h2 id="opening-in-openlp">Opening in OpenLP</h2>
+
+<p>Open OpenLP and use <strong>File → Open Service</strong> (or drag the <code class="language-plaintext highlighter-rouge">.osz</code> file onto OpenLP) to load the generated service.</p>

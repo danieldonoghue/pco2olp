@@ -1,0 +1,140 @@
+<h1 id="installation">Installation</h1>
+
+<h2 id="downloading">Downloading</h2>
+
+<p>Download the latest release from the <a href="https://github.com/danieldonoghue/pco2olp/releases/latest">GitHub Releases page</a>.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Platform</th>
+      <th>File</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>macOS (Universal)</td>
+      <td><code class="language-plaintext highlighter-rouge">pco2olp-gui-vX.Y.Z-darwin-universal.zip</code></td>
+    </tr>
+    <tr>
+      <td>Windows (x64)</td>
+      <td><code class="language-plaintext highlighter-rouge">pco2olp-gui-windows-amd64.exe</code></td>
+    </tr>
+    <tr>
+      <td>Windows (ARM64)</td>
+      <td><code class="language-plaintext highlighter-rouge">pco2olp-gui-windows-arm64.exe</code></td>
+    </tr>
+    <tr>
+      <td>Linux (x64 GUI)</td>
+      <td><code class="language-plaintext highlighter-rouge">pco2olp-gui-linux-amd64</code></td>
+    </tr>
+    <tr>
+      <td>Linux (x64 CLI)</td>
+      <td><code class="language-plaintext highlighter-rouge">pco2olp-linux-amd64</code></td>
+    </tr>
+    <tr>
+      <td>Linux (ARM64 CLI)</td>
+      <td><code class="language-plaintext highlighter-rouge">pco2olp-linux-arm64</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="macos">macOS</h2>
+
+<ol>
+  <li>Download and unzip <code class="language-plaintext highlighter-rouge">pco2olp-gui-vX.Y.Z-darwin-universal.zip</code></li>
+  <li>Drag <code class="language-plaintext highlighter-rouge">pco2olp.app</code> to your <strong>Applications</strong> folder</li>
+  <li>Double-click to open</li>
+</ol>
+
+<h3 id="gatekeeper-warning">Gatekeeper warning</h3>
+
+<p>Because the app is downloaded from the internet, macOS may block it on first launch.</p>
+
+<p><strong>Option A — System Settings (recommended)</strong></p>
+<ol>
+  <li>Try to open the app — you will see a warning dialog</li>
+  <li>Open <strong>System Settings → Privacy &amp; Security</strong></li>
+  <li>Scroll down to the Security section and click <strong>Open Anyway</strong></li>
+  <li>Click <strong>Open</strong> in the confirmation dialog</li>
+</ol>
+
+<p><strong>Option B — Terminal</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>xattr -dr com.apple.quarantine /Applications/pco2olp.app
+</code></pre></div></div>
+
+<h3 id="keynote--presentation-conversion">Keynote / presentation conversion</h3>
+
+<p>To convert Keynote (<code class="language-plaintext highlighter-rouge">.key</code>) and PowerPoint (<code class="language-plaintext highlighter-rouge">.pptx</code>) files into slides, pco2olp uses AppleScript to drive Keynote.app. The first time you generate a file with presentations, macOS will ask:</p>
+
+<blockquote>
+  <p><em>“pco2olp” wants access to control “Keynote”. Allowing control will provide access to documents and data in “Keynote”, and to perform actions within that app.</em></p>
+</blockquote>
+
+<p>Click <strong>OK</strong> to allow. You can manage this permission later in <strong>System Settings → Privacy &amp; Security → Automation</strong>.</p>
+
+<h3 id="pdf-conversion-optional">PDF conversion (optional)</h3>
+
+<p>PDF files are converted using <code class="language-plaintext highlighter-rouge">pdftoppm</code> from the <a href="https://poppler.freedesktop.org/">poppler</a> toolkit. Install it with Homebrew:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>brew install poppler
+</code></pre></div></div>
+
+<p>If poppler is not installed, PDF plan attachments will be included as-is rather than converted to slides.</p>
+
+<hr />
+
+<h2 id="windows">Windows</h2>
+
+<ol>
+  <li>Download <code class="language-plaintext highlighter-rouge">pco2olp-gui-windows-amd64.exe</code> (or the ARM64 version)</li>
+  <li>Move it to a convenient location (e.g. <code class="language-plaintext highlighter-rouge">C:\Program Files\pco2olp\</code>)</li>
+  <li>Double-click to run</li>
+</ol>
+
+<h3 id="smartscreen-warning">SmartScreen warning</h3>
+
+<p>Windows may show a SmartScreen warning on first run:</p>
+
+<ol>
+  <li>Click <strong>More info</strong></li>
+  <li>Click <strong>Run anyway</strong></li>
+</ol>
+
+<h3 id="pdf-conversion-optional-1">PDF conversion (optional)</h3>
+
+<p>Install <code class="language-plaintext highlighter-rouge">pdftoppm</code> via the <a href="https://github.com/oschwartz10612/poppler-windows/releases">poppler Windows builds</a> and add the <code class="language-plaintext highlighter-rouge">bin/</code> folder to your system <code class="language-plaintext highlighter-rouge">PATH</code>.</p>
+
+<h3 id="firewall-prompt">Firewall prompt</h3>
+
+<p>pco2olp opens a local port (11019) briefly during authentication to receive the OAuth callback from your browser. Windows Firewall may ask permission — click <strong>Allow access</strong>.</p>
+
+<hr />
+
+<h2 id="linux">Linux</h2>
+
+<ol>
+  <li>Download the appropriate binary</li>
+  <li>Make it executable:
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>chmod +x pco2olp-gui-linux-amd64
+</code></pre></div>    </div>
+  </li>
+  <li>Run it:
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./pco2olp-gui-linux-amd64
+</code></pre></div>    </div>
+  </li>
+</ol>
+
+<h3 id="gui-dependencies">GUI dependencies</h3>
+
+<p>The GUI requires X11 or Wayland libraries. On Debian/Ubuntu:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo apt-get install libgl1-mesa-dev xorg-dev
+</code></pre></div></div>
+
+<h3 id="pdf-conversion-optional-2">PDF conversion (optional)</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sudo apt-get install poppler-utils
+</code></pre></div></div>

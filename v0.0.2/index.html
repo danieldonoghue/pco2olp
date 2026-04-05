@@ -1,0 +1,81 @@
+<h1 id="pco2olp-user-guide">pco2olp User Guide</h1>
+
+<p>pco2olp connects to <a href="https://planningcenteronline.com">Planning Center Online</a> and generates <a href="https://openlp.org">OpenLP</a> service files (<code class="language-plaintext highlighter-rouge">.osz</code>) ready to open directly in OpenLP on the day of your service.</p>
+
+<h2 id="what-it-does">What it does</h2>
+
+<ol>
+  <li>Authenticates with your Planning Center account using OAuth</li>
+  <li>Lets you browse your service types and plans</li>
+  <li>Shows you all items in a plan — songs, headers, media, presentations</li>
+  <li>Downloads associated media and attachments</li>
+  <li>Produces an <code class="language-plaintext highlighter-rouge">.osz</code> file containing everything OpenLP needs</li>
+</ol>
+
+<h2 id="key-features">Key features</h2>
+
+<ul>
+  <li><strong>GUI</strong> — a simple point-and-click interface (no command line needed)</li>
+  <li><strong>CLI</strong> — a full command-line interface for scripted or automated use</li>
+  <li><strong>Media embedding</strong> — video, audio, images, and slide decks downloaded and bundled into the service file</li>
+  <li><strong>Presentation conversion</strong> — Keynote, PowerPoint, and PDF files automatically converted to image slides</li>
+  <li><strong>Media caching</strong> — downloaded files are cached locally so re-generating is fast</li>
+  <li><strong>Selective items</strong> — include or exclude individual items before generating</li>
+  <li><strong>External media mode</strong> — optionally keep media files outside the <code class="language-plaintext highlighter-rouge">.osz</code> for manual placement</li>
+</ul>
+
+<h2 id="supported-platforms">Supported platforms</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Platform</th>
+      <th>GUI</th>
+      <th>CLI</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>macOS (Apple Silicon)</td>
+      <td>✓</td>
+      <td>✓</td>
+    </tr>
+    <tr>
+      <td>macOS (Intel)</td>
+      <td>✓</td>
+      <td>✓</td>
+    </tr>
+    <tr>
+      <td>Windows (x64)</td>
+      <td>✓</td>
+      <td>✓</td>
+    </tr>
+    <tr>
+      <td>Windows (ARM64)</td>
+      <td>✓</td>
+      <td>✓</td>
+    </tr>
+    <tr>
+      <td>Linux (x64)</td>
+      <td>✓</td>
+      <td>✓</td>
+    </tr>
+    <tr>
+      <td>Linux (ARM64)</td>
+      <td>—</td>
+      <td>✓</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="quick-start">Quick start</h2>
+
+<ol>
+  <li><a href="installation">Download and install</a> the app for your platform</li>
+  <li>Open pco2olp — it will launch your browser to sign in to Planning Center</li>
+  <li>Select your service type and plan</li>
+  <li>Click <strong>Generate Service File</strong></li>
+  <li>Open the resulting <code class="language-plaintext highlighter-rouge">.osz</code> file in OpenLP</li>
+</ol>
+
+<p class="note">If you are using an organisation-specific build (e.g. provided by your church), PCO credentials are already baked in — you only need to sign in.</p>

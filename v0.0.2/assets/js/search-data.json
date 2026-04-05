@@ -1,0 +1,268 @@
+{"0": {
+    "doc": "Authentication",
+    "title": "Authentication",
+    "content": "pco2olp connects to Planning Center Online using OAuth 2.0. You authenticate once and your token is stored securely on your computer — you won’t need to sign in again unless your session expires (tokens last up to 90 days). ",
+    "url": "/pco2olp/v0.0.2/authentication.html",
+    
+    "relUrl": "/authentication.html"
+  },"1": {
+    "doc": "Authentication",
+    "title": "Getting PCO credentials",
+    "content": "You need a PCO OAuth Application registered in your Planning Center account. This requires Org Admin access. | Go to planningcenteronline.com/oauth/applications | Click New Application | Give it a name (e.g. “pco2olp”) | Set the Redirect URI to: http://localhost:11019/callback . | Note the Client ID and Client Secret | . If you are using an organisation-specific build, credentials are already baked in and you do not need to register an application. ",
+    "url": "/pco2olp/v0.0.2/authentication.html#getting-pco-credentials",
+    
+    "relUrl": "/authentication.html#getting-pco-credentials"
+  },"2": {
+    "doc": "Authentication",
+    "title": "Entering credentials",
+    "content": ". | Open Settings (⌘, on macOS, or via the app menu) | Enter your Client ID and Client Secret in the PCO Credentials section | Click Sign In to Planning Center | . ",
+    "url": "/pco2olp/v0.0.2/authentication.html#entering-credentials",
+    
+    "relUrl": "/authentication.html#entering-credentials"
+  },"3": {
+    "doc": "Authentication",
+    "title": "Signing in",
+    "content": "When you click Sign In (or on first launch), pco2olp opens your web browser at the Planning Center login page. Sign in with your PCO account and click Authorize. Your browser will redirect to http://localhost:11019/callback — this is handled automatically by pco2olp and you can close the browser tab once you see “Authentication successful”. Firewall note . Port 11019 is only open briefly during authentication and is bound to 127.0.0.1 (localhost only) — it is not accessible from the network. If your firewall prompts you, allow access for localhost connections only. ",
+    "url": "/pco2olp/v0.0.2/authentication.html#signing-in",
+    
+    "relUrl": "/authentication.html#signing-in"
+  },"4": {
+    "doc": "Authentication",
+    "title": "Re-authentication",
+    "content": "Your access token is automatically refreshed in the background. If your refresh token expires (after 90 days of inactivity), you will need to sign in again: . | Open Settings | Click Sign In to Planning Center | . You can also sign in again after changing your Client ID or Secret. ",
+    "url": "/pco2olp/v0.0.2/authentication.html#re-authentication",
+    
+    "relUrl": "/authentication.html#re-authentication"
+  },"5": {
+    "doc": "CLI Reference",
+    "title": "CLI Reference",
+    "content": "pco2olp can be used entirely from the command line. Running it with arguments enters CLI mode; running it without arguments opens the GUI. ",
+    "url": "/pco2olp/v0.0.2/cli.html",
+    
+    "relUrl": "/cli.html"
+  },"6": {
+    "doc": "CLI Reference",
+    "title": "Authentication",
+    "content": "The CLI uses the same OAuth token store as the GUI. If you have already authenticated in the GUI, the CLI will use the same token automatically. Set your credentials via environment variables: . export PCO_CLIENT_ID=your-client-id export PCO_CLIENT_SECRET=your-client-secret . ",
+    "url": "/pco2olp/v0.0.2/cli.html#authentication",
+    
+    "relUrl": "/cli.html#authentication"
+  },"7": {
+    "doc": "CLI Reference",
+    "title": "Basic usage",
+    "content": "pco2olp --service-type \"Sunday\" --plan 2026-04-06 . ",
+    "url": "/pco2olp/v0.0.2/cli.html#basic-usage",
+    
+    "relUrl": "/cli.html#basic-usage"
+  },"8": {
+    "doc": "CLI Reference",
+    "title": "Flags",
+    "content": "Service selection . | Flag | Description | . | --service-type &lt;name\\|id&gt; | Service type name or numeric ID | . | --plan &lt;id\\|YYYY-MM-DD&gt; | Plan ID or date | . | --all | When listing plans, show all (default: recent and upcoming only) | . Output . | Flag | Description | . | --output &lt;file.osz&gt; | Output file path (default: YYYY-MM-DD-Title.osz in current directory) | . | --dry-run | Preview what would be generated without creating the file | . Content . | Flag | Description | . | --no-headers | Exclude header items from the service | . Media . | Flag | Description | . | --no-cache | Bypass the media cache and re-download all files | . | --cache-info | Show cache statistics and location | . | --clean-cache | Delete all cached media files | . Listing . | Flag | Description | . | --list-service-types | List all available service types | . | --list-plans | List recent plans for the given service type | . Other . | Flag | Description | . | --debug | Enable verbose debug logging | . | --version | Show version, commit, and build time | . ",
+    "url": "/pco2olp/v0.0.2/cli.html#flags",
+    
+    "relUrl": "/cli.html#flags"
+  },"9": {
+    "doc": "CLI Reference",
+    "title": "Examples",
+    "content": "# List service types pco2olp --list-service-types # List recent plans for a service type pco2olp --service-type \"Sunday Morning\" --list-plans # List all plans (full history) pco2olp --service-type \"Sunday Morning\" --list-plans --all # Generate a service file for a specific date pco2olp --service-type \"Sunday Morning\" --plan 2026-04-06 # Generate by plan ID pco2olp --service-type \"Sunday Morning\" --plan 12345678 # Generate without headers pco2olp --service-type \"Sunday Morning\" --plan 2026-04-06 --no-headers # Preview without generating pco2olp --service-type \"Sunday Morning\" --plan 2026-04-06 --dry-run # Re-download all media pco2olp --service-type \"Sunday Morning\" --plan 2026-04-06 --no-cache # Save to a specific path pco2olp --service-type \"Sunday Morning\" --plan 2026-04-06 --output ~/Desktop/service.osz # Show cache info pco2olp --cache-info # Clear the cache pco2olp --clean-cache . ",
+    "url": "/pco2olp/v0.0.2/cli.html#examples",
+    
+    "relUrl": "/cli.html#examples"
+  },"10": {
+    "doc": "CLI Reference",
+    "title": "Environment variables",
+    "content": "| Variable | Description | . | PCO_CLIENT_ID | OAuth Client ID (required unless set via GUI Settings) | . | PCO_CLIENT_SECRET | OAuth Client Secret (required unless set via GUI Settings) | . Token storage: $XDG_CONFIG_HOME/pco2olp/tokens.json (Linux), ~/Library/Application Support/pco2olp/tokens.json (macOS), %AppData%\\pco2olp\\tokens.json (Windows). ",
+    "url": "/pco2olp/v0.0.2/cli.html#environment-variables",
+    
+    "relUrl": "/cli.html#environment-variables"
+  },"11": {
+    "doc": "Introduction",
+    "title": "pco2olp User Guide",
+    "content": "pco2olp connects to Planning Center Online and generates OpenLP service files (.osz) ready to open directly in OpenLP on the day of your service. ",
+    "url": "/pco2olp/v0.0.2/#pco2olp-user-guide",
+    
+    "relUrl": "/#pco2olp-user-guide"
+  },"12": {
+    "doc": "Introduction",
+    "title": "What it does",
+    "content": ". | Authenticates with your Planning Center account using OAuth | Lets you browse your service types and plans | Shows you all items in a plan — songs, headers, media, presentations | Downloads associated media and attachments | Produces an .osz file containing everything OpenLP needs | . ",
+    "url": "/pco2olp/v0.0.2/#what-it-does",
+    
+    "relUrl": "/#what-it-does"
+  },"13": {
+    "doc": "Introduction",
+    "title": "Key features",
+    "content": ". | GUI — a simple point-and-click interface (no command line needed) | CLI — a full command-line interface for scripted or automated use | Media embedding — video, audio, images, and slide decks downloaded and bundled into the service file | Presentation conversion — Keynote, PowerPoint, and PDF files automatically converted to image slides | Media caching — downloaded files are cached locally so re-generating is fast | Selective items — include or exclude individual items before generating | External media mode — optionally keep media files outside the .osz for manual placement | . ",
+    "url": "/pco2olp/v0.0.2/#key-features",
+    
+    "relUrl": "/#key-features"
+  },"14": {
+    "doc": "Introduction",
+    "title": "Supported platforms",
+    "content": "| Platform | GUI | CLI | . | macOS (Apple Silicon) | ✓ | ✓ | . | macOS (Intel) | ✓ | ✓ | . | Windows (x64) | ✓ | ✓ | . | Windows (ARM64) | ✓ | ✓ | . | Linux (x64) | ✓ | ✓ | . | Linux (ARM64) | — | ✓ | . ",
+    "url": "/pco2olp/v0.0.2/#supported-platforms",
+    
+    "relUrl": "/#supported-platforms"
+  },"15": {
+    "doc": "Introduction",
+    "title": "Quick start",
+    "content": ". | Download and install the app for your platform | Open pco2olp — it will launch your browser to sign in to Planning Center | Select your service type and plan | Click Generate Service File | Open the resulting .osz file in OpenLP | . If you are using an organisation-specific build (e.g. provided by your church), PCO credentials are already baked in — you only need to sign in. ",
+    "url": "/pco2olp/v0.0.2/#quick-start",
+    
+    "relUrl": "/#quick-start"
+  },"16": {
+    "doc": "Introduction",
+    "title": "Introduction",
+    "content": " ",
+    "url": "/pco2olp/v0.0.2/",
+    
+    "relUrl": "/"
+  },"17": {
+    "doc": "Installation",
+    "title": "Installation",
+    "content": " ",
+    "url": "/pco2olp/v0.0.2/installation.html",
+    
+    "relUrl": "/installation.html"
+  },"18": {
+    "doc": "Installation",
+    "title": "Downloading",
+    "content": "Download the latest release from the GitHub Releases page. | Platform | File | . | macOS (Universal) | pco2olp-gui-vX.Y.Z-darwin-universal.zip | . | Windows (x64) | pco2olp-gui-windows-amd64.exe | . | Windows (ARM64) | pco2olp-gui-windows-arm64.exe | . | Linux (x64 GUI) | pco2olp-gui-linux-amd64 | . | Linux (x64 CLI) | pco2olp-linux-amd64 | . | Linux (ARM64 CLI) | pco2olp-linux-arm64 | . ",
+    "url": "/pco2olp/v0.0.2/installation.html#downloading",
+    
+    "relUrl": "/installation.html#downloading"
+  },"19": {
+    "doc": "Installation",
+    "title": "macOS",
+    "content": ". | Download and unzip pco2olp-gui-vX.Y.Z-darwin-universal.zip | Drag pco2olp.app to your Applications folder | Double-click to open | . Gatekeeper warning . Because the app is downloaded from the internet, macOS may block it on first launch. Option A — System Settings (recommended) . | Try to open the app — you will see a warning dialog | Open System Settings → Privacy &amp; Security | Scroll down to the Security section and click Open Anyway | Click Open in the confirmation dialog | . Option B — Terminal . xattr -dr com.apple.quarantine /Applications/pco2olp.app . Keynote / presentation conversion . To convert Keynote (.key) and PowerPoint (.pptx) files into slides, pco2olp uses AppleScript to drive Keynote.app. The first time you generate a file with presentations, macOS will ask: . “pco2olp” wants access to control “Keynote”. Allowing control will provide access to documents and data in “Keynote”, and to perform actions within that app. Click OK to allow. You can manage this permission later in System Settings → Privacy &amp; Security → Automation. PDF conversion (optional) . PDF files are converted using pdftoppm from the poppler toolkit. Install it with Homebrew: . brew install poppler . If poppler is not installed, PDF plan attachments will be included as-is rather than converted to slides. ",
+    "url": "/pco2olp/v0.0.2/installation.html#macos",
+    
+    "relUrl": "/installation.html#macos"
+  },"20": {
+    "doc": "Installation",
+    "title": "Windows",
+    "content": ". | Download pco2olp-gui-windows-amd64.exe (or the ARM64 version) | Move it to a convenient location (e.g. C:\\Program Files\\pco2olp\\) | Double-click to run | . SmartScreen warning . Windows may show a SmartScreen warning on first run: . | Click More info | Click Run anyway | . PDF conversion (optional) . Install pdftoppm via the poppler Windows builds and add the bin/ folder to your system PATH. Firewall prompt . pco2olp opens a local port (11019) briefly during authentication to receive the OAuth callback from your browser. Windows Firewall may ask permission — click Allow access. ",
+    "url": "/pco2olp/v0.0.2/installation.html#windows",
+    
+    "relUrl": "/installation.html#windows"
+  },"21": {
+    "doc": "Installation",
+    "title": "Linux",
+    "content": ". | Download the appropriate binary | Make it executable: chmod +x pco2olp-gui-linux-amd64 . | Run it: ./pco2olp-gui-linux-amd64 . | . GUI dependencies . The GUI requires X11 or Wayland libraries. On Debian/Ubuntu: . sudo apt-get install libgl1-mesa-dev xorg-dev . PDF conversion (optional) . sudo apt-get install poppler-utils . ",
+    "url": "/pco2olp/v0.0.2/installation.html#linux",
+    
+    "relUrl": "/installation.html#linux"
+  },"22": {
+    "doc": "Settings",
+    "title": "Settings",
+    "content": "Open Settings from the app menu (pco2olp → Settings… on macOS, or ⌘,). ",
+    "url": "/pco2olp/v0.0.2/settings.html",
+    
+    "relUrl": "/settings.html"
+  },"23": {
+    "doc": "Settings",
+    "title": "Planning Center Credentials",
+    "content": "| Field | Description | . | Client ID | Your PCO OAuth application Client ID | . | Client Secret | Your PCO OAuth application Client Secret | . Click Sign In to Planning Center to authenticate (or re-authenticate after changing credentials). In organisation-specific builds, credentials are baked in and cannot be changed. Only the Re-authenticate button is shown. ",
+    "url": "/pco2olp/v0.0.2/settings.html#planning-center-credentials",
+    
+    "relUrl": "/settings.html#planning-center-credentials"
+  },"24": {
+    "doc": "Settings",
+    "title": "Output",
+    "content": "| Field | Description | . | Default output folder | Where .osz files are saved by default. Leave blank to use your home directory. | . | Media cache | Shows the number of cached files, total size, and cache location. | . Click Clear Cache to delete all cached media files. You will be asked to confirm. ",
+    "url": "/pco2olp/v0.0.2/settings.html#output",
+    
+    "relUrl": "/settings.html#output"
+  },"25": {
+    "doc": "Settings",
+    "title": "Media",
+    "content": "Download missing media . When enabled (the default), pco2olp downloads media files from Planning Center and embeds them in the .osz file during generation. When disabled, the service file is generated without any media — items referencing media will still appear in OpenLP but without the associated files. When “Download missing media” is off, the Re-download existing media option on the main window is disabled. Use external media folder . When enabled, media files are not embedded in the .osz file. Instead, pco2olp copies them into the configured external folder, organised as: . &lt;external folder&gt;/ media/ ← video and audio files presentations/ ← converted slide images (one subfolder per presentation) . A note is added to each affected service item referencing the external file location. Set a folder using the Browse… button next to External folder. External media mode is useful when your OpenLP machine and the machine running pco2olp share a network drive, or when you want to manage media separately from the service file. ",
+    "url": "/pco2olp/v0.0.2/settings.html#media",
+    
+    "relUrl": "/settings.html#media"
+  },"26": {
+    "doc": "Settings",
+    "title": "Local preview (developer)",
+    "content": "To preview the documentation locally, run from the docs/ directory: . bundle install bundle exec jekyll serve . Then open http://localhost:4000/pco2olp/latest/. ",
+    "url": "/pco2olp/v0.0.2/settings.html#local-preview-developer",
+    
+    "relUrl": "/settings.html#local-preview-developer"
+  },"27": {
+    "doc": "Using the App",
+    "title": "Using the App",
+    "content": " ",
+    "url": "/pco2olp/v0.0.2/usage.html",
+    
+    "relUrl": "/usage.html"
+  },"28": {
+    "doc": "Using the App",
+    "title": "Launching",
+    "content": "Open pco2olp from your Applications folder (macOS), Start menu (Windows), or by running the binary (Linux). On first launch, your browser will open for authentication. See Authentication for details. ",
+    "url": "/pco2olp/v0.0.2/usage.html#launching",
+    
+    "relUrl": "/usage.html#launching"
+  },"29": {
+    "doc": "Using the App",
+    "title": "Main window",
+    "content": "The main window has three sections: . | Top — service type and plan selectors | Centre — service items list and plan attachments list | Bottom — output path, options, and the Generate button | . 📸 Screenshot: main window with a plan loaded and items visible. ",
+    "url": "/pco2olp/v0.0.2/usage.html#main-window",
+    
+    "relUrl": "/usage.html#main-window"
+  },"30": {
+    "doc": "Using the App",
+    "title": "Selecting a service type",
+    "content": "Use the Service type dropdown to pick the Planning Center service type (e.g. “Sunday Morning”, “Youth”). The list is populated automatically once you are authenticated. ",
+    "url": "/pco2olp/v0.0.2/usage.html#selecting-a-service-type",
+    
+    "relUrl": "/usage.html#selecting-a-service-type"
+  },"31": {
+    "doc": "Using the App",
+    "title": "Selecting a plan",
+    "content": "Once a service type is selected, recent and upcoming plans appear in the Plan dropdown. The next upcoming service is selected automatically. To see older plans, check Show all. ",
+    "url": "/pco2olp/v0.0.2/usage.html#selecting-a-plan",
+    
+    "relUrl": "/usage.html#selecting-a-plan"
+  },"32": {
+    "doc": "Using the App",
+    "title": "Service items",
+    "content": "The items list shows all items in the selected plan: . | Headers are shown with a bold label and a shaded background | Songs, media, presentations, and custom items are shown with their type icon | . Each item has a checkbox — uncheck any items you want to exclude from the generated service file. Use All and None buttons to select or deselect everything at once. Including headers . By default, header items are hidden. Check Include headers to show them in the list. When Include headers is turned on, all header items are set to included. You can then uncheck individual headers you do not want. ",
+    "url": "/pco2olp/v0.0.2/usage.html#service-items",
+    
+    "relUrl": "/usage.html#service-items"
+  },"33": {
+    "doc": "Using the App",
+    "title": "Plan attachments",
+    "content": "Files attached to the plan itself (rather than to individual items) appear in the Plan attachments section. These are always included. ",
+    "url": "/pco2olp/v0.0.2/usage.html#plan-attachments",
+    
+    "relUrl": "/usage.html#plan-attachments"
+  },"34": {
+    "doc": "Using the App",
+    "title": "Output path",
+    "content": "The output path is automatically set to your configured output folder (or your home directory) with a filename of YYYY-MM-DD-Title.osz. Click Browse… to pick a different location or filename. ",
+    "url": "/pco2olp/v0.0.2/usage.html#output-path",
+    
+    "relUrl": "/usage.html#output-path"
+  },"35": {
+    "doc": "Using the App",
+    "title": "Options",
+    "content": "| Option | Description | . | Include headers | Show and optionally include header items | . | Re-download existing media | Bypass the media cache and re-download all files from Planning Center | . “Re-download existing media” is only available when “Download missing media” is enabled in Settings. ",
+    "url": "/pco2olp/v0.0.2/usage.html#options",
+    
+    "relUrl": "/usage.html#options"
+  },"36": {
+    "doc": "Using the App",
+    "title": "Generating the service file",
+    "content": "Click Generate Service File to produce the .osz file. A progress dialog shows each step: authenticating, fetching items, downloading media, converting presentations, and writing the file. When complete, a dialog shows the filename and size. Click Show in Finder (macOS) or Show in Explorer (Windows) to reveal the file. Alternative media mode . The dropdown arrow (▾) next to the Generate button offers an alternative: . | If your default is embedded media, the dropdown offers Generate with external media | If your default is external media, the dropdown offers Generate with embedded media | . See Settings → Media for how to set your default. ",
+    "url": "/pco2olp/v0.0.2/usage.html#generating-the-service-file",
+    
+    "relUrl": "/usage.html#generating-the-service-file"
+  },"37": {
+    "doc": "Using the App",
+    "title": "Opening in OpenLP",
+    "content": "Open OpenLP and use File → Open Service (or drag the .osz file onto OpenLP) to load the generated service. ",
+    "url": "/pco2olp/v0.0.2/usage.html#opening-in-openlp",
+    
+    "relUrl": "/usage.html#opening-in-openlp"
+  }
+}

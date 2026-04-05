@@ -1,0 +1,49 @@
+<h1 id="authentication">Authentication</h1>
+
+<p>pco2olp connects to Planning Center Online using OAuth 2.0. You authenticate once and your token is stored securely on your computer — you won’t need to sign in again unless your session expires (tokens last up to 90 days).</p>
+
+<h2 id="getting-pco-credentials">Getting PCO credentials</h2>
+
+<p>You need a PCO <strong>OAuth Application</strong> registered in your Planning Center account. This requires Org Admin access.</p>
+
+<ol>
+  <li>Go to <a href="https://planningcenteronline.com/oauth/applications">planningcenteronline.com/oauth/applications</a></li>
+  <li>Click <strong>New Application</strong></li>
+  <li>Give it a name (e.g. “pco2olp”)</li>
+  <li>Set the <strong>Redirect URI</strong> to:
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://localhost:11019/callback
+</code></pre></div>    </div>
+  </li>
+  <li>Note the <strong>Client ID</strong> and <strong>Client Secret</strong></li>
+</ol>
+
+<p class="note">If you are using an organisation-specific build, credentials are already baked in and you do not need to register an application.</p>
+
+<h2 id="entering-credentials">Entering credentials</h2>
+
+<ol>
+  <li>Open <strong>Settings</strong> (⌘, on macOS, or via the app menu)</li>
+  <li>Enter your <strong>Client ID</strong> and <strong>Client Secret</strong> in the PCO Credentials section</li>
+  <li>Click <strong>Sign In to Planning Center</strong></li>
+</ol>
+
+<h2 id="signing-in">Signing in</h2>
+
+<p>When you click Sign In (or on first launch), pco2olp opens your web browser at the Planning Center login page. Sign in with your PCO account and click <strong>Authorize</strong>.</p>
+
+<p>Your browser will redirect to <code class="language-plaintext highlighter-rouge">http://localhost:11019/callback</code> — this is handled automatically by pco2olp and you can close the browser tab once you see “Authentication successful”.</p>
+
+<h3 id="firewall-note">Firewall note</h3>
+
+<p>Port 11019 is only open briefly during authentication and is bound to <code class="language-plaintext highlighter-rouge">127.0.0.1</code> (localhost only) — it is not accessible from the network. If your firewall prompts you, allow access for localhost connections only.</p>
+
+<h2 id="re-authentication">Re-authentication</h2>
+
+<p>Your access token is automatically refreshed in the background. If your refresh token expires (after 90 days of inactivity), you will need to sign in again:</p>
+
+<ol>
+  <li>Open <strong>Settings</strong></li>
+  <li>Click <strong>Sign In to Planning Center</strong></li>
+</ol>
+
+<p>You can also sign in again after changing your Client ID or Secret.</p>

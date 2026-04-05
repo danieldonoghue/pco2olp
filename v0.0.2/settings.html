@@ -1,0 +1,94 @@
+<h1 id="settings">Settings</h1>
+
+<p>Open Settings from the app menu (<strong>pco2olp → Settings…</strong> on macOS, or ⌘,).</p>
+
+<hr />
+
+<h2 id="planning-center-credentials">Planning Center Credentials</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Client ID</strong></td>
+      <td>Your PCO OAuth application Client ID</td>
+    </tr>
+    <tr>
+      <td><strong>Client Secret</strong></td>
+      <td>Your PCO OAuth application Client Secret</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Click <strong>Sign In to Planning Center</strong> to authenticate (or re-authenticate after changing credentials).</p>
+
+<p class="note">In organisation-specific builds, credentials are baked in and cannot be changed. Only the <strong>Re-authenticate</strong> button is shown.</p>
+
+<hr />
+
+<h2 id="output">Output</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Default output folder</strong></td>
+      <td>Where <code class="language-plaintext highlighter-rouge">.osz</code> files are saved by default. Leave blank to use your home directory.</td>
+    </tr>
+    <tr>
+      <td><strong>Media cache</strong></td>
+      <td>Shows the number of cached files, total size, and cache location.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Click <strong>Clear Cache</strong> to delete all cached media files. You will be asked to confirm.</p>
+
+<hr />
+
+<h2 id="media">Media</h2>
+
+<h3 id="download-missing-media">Download missing media</h3>
+
+<p>When enabled (the default), pco2olp downloads media files from Planning Center and embeds them in the <code class="language-plaintext highlighter-rouge">.osz</code> file during generation.</p>
+
+<p>When disabled, the service file is generated without any media — items referencing media will still appear in OpenLP but without the associated files.</p>
+
+<p class="note">When “Download missing media” is off, the <strong>Re-download existing media</strong> option on the main window is disabled.</p>
+
+<h3 id="use-external-media-folder">Use external media folder</h3>
+
+<p>When enabled, media files are <strong>not</strong> embedded in the <code class="language-plaintext highlighter-rouge">.osz</code> file. Instead, pco2olp copies them into the configured external folder, organised as:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;external folder&gt;/
+  media/           ← video and audio files
+  presentations/   ← converted slide images (one subfolder per presentation)
+</code></pre></div></div>
+
+<p>A note is added to each affected service item referencing the external file location.</p>
+
+<p>Set a folder using the <strong>Browse…</strong> button next to <strong>External folder</strong>.</p>
+
+<p class="tip">External media mode is useful when your OpenLP machine and the machine running pco2olp share a network drive, or when you want to manage media separately from the service file.</p>
+
+<hr />
+
+<h2 id="local-preview-developer">Local preview (developer)</h2>
+
+<p>To preview the documentation locally, run from the <code class="language-plaintext highlighter-rouge">docs/</code> directory:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bundle install
+bundle exec jekyll serve
+</code></pre></div></div>
+
+<p>Then open <a href="http://localhost:4000/pco2olp/latest/">http://localhost:4000/pco2olp/latest/</a>.</p>
