@@ -79,56 +79,39 @@ jobs:
           touch .nojekyll
 
           # Update versions.json
-          python3 << 'PYEOF'
-import json, os, sys
-
-version = os.environ['VERSION']
-path = 'versions.json'
-
-try:
-    with open(path) as f:
-        data = json.load(f)
-except FileNotFoundError:
-    data = {'versions': [], 'latest': ''}
-
-if version not in data['versions']:
-    data['versions'].insert(0, version)
-
-# Keep versions sorted descending using semantic version comparison
-def ver_key(v):
-    try:
-        return [int(x) for x in v.lstrip('v').split('.')]
-    except ValueError:
-        return [0]
-data['versions'].sort(key=ver_key, reverse=True)
-data['latest'] = data['versions'][0]
-
-with open(path, 'w') as f:
-    json.dump(data, f, indent=2)
-
-print('versions.json updated:', data)
-PYEOF
+          python3 "$GITHUB_WORKSPACE/.github/scripts/update_versions.py"
 
           # Update root redirect to latest
-          cat > index.html << 'HTMLEOF'
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta http-equiv="refresh" content="0;url=latest/">
-  <title>pco2olp Documentation</title>
-</head>
-<body>
-  <p>Redirecting to <a href="latest/">latest documentation</a>…</p>
-</body>
-</html>
-HTMLEOF
+          {
+            echo '<!DOCTYPE html>'
+            echo '<html>'
+            echo '<head>'
+            echo '  <meta charset="utf-8">'
+            echo '  <meta http-equiv="refresh" content="0;url=latest/">'
+            echo '  <title>pco2olp Documentation</title>'
+            echo '</head>'
+            echo '<body>'
+            printf '  <p>Redirecting to <a href="latest/">latest documentation</a>\xe2\x80\xa6</p>\n'
+            echo '</body>'
+            echo '</html>'
+          } > index.html
 
           # Update latest/ redirect to point to newest version
           LATEST=$(python3 -c "import json; d=json.load(open('versions.json')); print(d['latest'])")
           mkdir -p latest
-          printf '<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <meta http-equiv="refresh" content="0;url=../%s/">\n  <title>pco2olp Documentation</title>\n</head>\n<body>\n  <p>Redirecting to <a href="../%s/">latest documentation</a>…</p>\n</body>\n</html>\n' \
-              "${LATEST}" "${LATEST}" > latest/index.html
+          {
+            echo '<!DOCTYPE html>'
+            echo '<html>'
+            echo '<head>'
+            echo '  <meta charset="utf-8">'
+            printf '  <meta http-equiv="refresh" content="0;url=../%s/">\n' "${LATEST}"
+            echo '  <title>pco2olp Documentation</title>'
+            echo '</head>'
+            echo '<body>'
+            printf '  <p>Redirecting to <a href="../%s/">latest documentation</a>\xe2\x80\xa6</p>\n' "${LATEST}"
+            echo '</body>'
+            echo '</html>'
+          } > latest/index.html
 
           git add .
           # Only commit if there are changes
