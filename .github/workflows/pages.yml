@@ -116,6 +116,6 @@ jobs:
           git add .
           # Only commit if there are changes
           git diff --staged --quiet || git commit -m "Deploy docs ${VERSION}"
-          git push origin gh-pages
+          git push origin HEAD:gh-pages
         env:
           VERSION: ${{ steps.version.outputs.version }}
