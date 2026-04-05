@@ -5,7 +5,8 @@
 | Platform | Download |
 |----------|----------|
 | macOS (Universal) | `pco2olp-gui-VERSION-darwin-universal.zip` — unzip and drag to Applications |
-| Windows | `pco2olp-gui-windows-amd64.exe` |
+| Windows (x64) | `pco2olp-gui-windows-amd64.exe` |
+| Windows (arm64) | `pco2olp-gui-windows-arm64.exe` |
 | Linux (amd64) | `pco2olp-gui-linux-amd64` |
 
 ### Command-Line (CLI)
@@ -14,7 +15,8 @@
 |----------|----------|
 | macOS (Apple Silicon) | `pco2olp-darwin-arm64` |
 | macOS (Intel) | `pco2olp-darwin-amd64` |
-| Windows | `pco2olp-windows-amd64.exe` |
+| Windows (x64) | `pco2olp-windows-amd64.exe` |
+| Windows (arm64) | `pco2olp-windows-arm64.exe` |
 | Linux (amd64) | `pco2olp-linux-amd64` |
 | Linux (arm64) | `pco2olp-linux-arm64` |
 
@@ -34,7 +36,7 @@ sudo mv pco2olp /usr/local/bin/
 
 ### Windows
 
-Download `pco2olp-windows-amd64.exe` from the assets below and place it wherever you keep executables (e.g. `C:\Tools\`). Add that folder to your `PATH` if you want to run it from any terminal.
+Download the appropriate `.exe` from the assets below (`amd64` for x64 systems, `arm64` for ARM-based Windows devices) and place it wherever you keep executables (e.g. `C:\Tools\`). Add that folder to your `PATH` if you want to run it from any terminal.
 
 ### Linux (amd64)
 

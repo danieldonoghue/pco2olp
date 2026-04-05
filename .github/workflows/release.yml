@@ -19,7 +19,7 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Build CLI linux/amd64, linux/arm64, windows/amd64
+      - name: Build CLI linux/amd64, linux/arm64, windows/amd64, windows/arm64
         run: |
           VERSION="${{ github.ref_name }}"
           COMMIT="$(git rev-parse --short HEAD)"
@@ -31,6 +31,7 @@ jobs:
           GOOS=linux   GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-linux-amd64   .
           GOOS=linux   GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-linux-arm64   .
           GOOS=windows GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-windows-amd64.exe .
+          GOOS=windows GOARCH=arm64 go build -ldflags "${LDFLAGS}" -o dist/pco2olp-windows-arm64.exe .
 
       - uses: actions/upload-artifact@v7
         with:
@@ -93,6 +94,34 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: binaries-gui-windows
+          path: dist/
+
+  # ── GUI: Windows arm64 (native CGO on windows-11-arm runner) ──────────────
+  build-gui-windows-arm:
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Build GUI windows/arm64
+        shell: bash
+        env:
+          CC: clang
+        run: |
+          VERSION="${{ github.ref_name }}"
+          COMMIT="$(git rev-parse --short HEAD)"
+          BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          LDFLAGS="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.buildTime=${BUILD_TIME}"
+
+          mkdir -p dist
+          CGO_ENABLED=1 GOOS=windows GOARCH=arm64 go build -tags gui -ldflags "${LDFLAGS}" -o dist/pco2olp-gui-windows-arm64.exe .
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: binaries-gui-windows-arm
           path: dist/
 
   # ── GUI + CLI: macOS universal .app bundle ─────────────────────────────────
@@ -216,7 +245,7 @@ jobs:
 
   # ── Create GitHub release ──────────────────────────────────────────────────
   release:
-    needs: [build-cli-linux-windows, build-gui-linux, build-gui-windows, build-macos]
+    needs: [build-cli-linux-windows, build-gui-linux, build-gui-windows, build-gui-windows-arm, build-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

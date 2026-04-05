@@ -11,7 +11,7 @@ LDFLAGS := -ldflags "-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -
 AUTH_PKG := github.com/danieldonoghue/pco2olp/internal/auth
 ORG_LDFLAGS := -ldflags "-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildTime=$(BUILD_TIME) -X $(AUTH_PKG).defaultClientID=$(PCO_CLIENT_ID) -X $(AUTH_PKG).defaultClientSecret=$(PCO_CLIENT_SECRET) -X 'main.orgName=$(ORG_NAME)'"
 
-PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
+PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
 
 # macOS app bundle settings
 BUNDLE_ID   := io.github.danieldonoghue.pco2olp
