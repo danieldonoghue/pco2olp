@@ -55,7 +55,7 @@ How sweet the sound`,
 		},
 	}
 
-	sf := PlanToServiceFile(items, nil, nil)
+	sf := PlanToServiceFile(items, nil, nil, nil)
 
 	if len(sf.Items) != 4 {
 		t.Fatalf("expected 4 items, got %d", len(sf.Items))
@@ -114,7 +114,7 @@ func TestMediaWithDownloadedFile(t *testing.T) {
 		},
 	}
 
-	sf := PlanToServiceFile(items, mediaMap, nil)
+	sf := PlanToServiceFile(items, mediaMap, nil, nil)
 	if len(sf.Items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(sf.Items))
 	}
@@ -142,7 +142,7 @@ func TestImageMediaType(t *testing.T) {
 			PCOMediaType: "background_image", LocalPath: "/tmp/def456.jpg",
 		},
 	}
-	sf := PlanToServiceFile(items, mediaMap, nil)
+	sf := PlanToServiceFile(items, mediaMap, nil, nil)
 	if sf.Items[0].Header.Plugin != "images" {
 		t.Errorf("expected images plugin, got %s", sf.Items[0].Header.Plugin)
 	}
@@ -161,7 +161,7 @@ func TestSongWithNoLyrics(t *testing.T) {
 		},
 	}
 
-	sf := PlanToServiceFile(items, nil, nil)
+	sf := PlanToServiceFile(items, nil, nil, nil)
 	if len(sf.Items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(sf.Items))
 	}
@@ -181,7 +181,7 @@ func TestCustomItemPrefersHTMLDetails(t *testing.T) {
 		},
 	}
 
-	sf := PlanToServiceFile(items, nil, nil)
+	sf := PlanToServiceFile(items, nil, nil, nil)
 	if len(sf.Items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(sf.Items))
 	}
@@ -208,7 +208,7 @@ func TestCustomItemSlidesSplitOnDivider(t *testing.T) {
 		},
 	}
 
-	sf := PlanToServiceFile(items, nil, nil)
+	sf := PlanToServiceFile(items, nil, nil, nil)
 	if len(sf.Items[0].Data) != 3 {
 		t.Fatalf("expected 3 slides, got %d", len(sf.Items[0].Data))
 	}
@@ -230,7 +230,7 @@ func TestCustomItemFallsBackToDescription(t *testing.T) {
 		},
 	}
 
-	sf := PlanToServiceFile(items, nil, nil)
+	sf := PlanToServiceFile(items, nil, nil, nil)
 	if sf.Items[0].Data[0].RawSlide != "Remember the potluck" {
 		t.Errorf("expected description as body, got %q", sf.Items[0].Data[0].RawSlide)
 	}
@@ -245,7 +245,7 @@ func TestCustomItemFallsBackToTitle(t *testing.T) {
 		},
 	}
 
-	sf := PlanToServiceFile(items, nil, nil)
+	sf := PlanToServiceFile(items, nil, nil, nil)
 	if sf.Items[0].Data[0].RawSlide != "Offering" {
 		t.Errorf("expected title as fallback, got %q", sf.Items[0].Data[0].RawSlide)
 	}

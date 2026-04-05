@@ -25,12 +25,16 @@ type ProgressFunc func(message string)
 
 // Config holds options for a generate run.
 type Config struct {
-	ServiceTypeID string
-	PlanID        string
-	OutputPath    string
-	NoHeaders     bool
-	NoCache       bool
-	Debug         bool
+	ServiceTypeID    string
+	PlanID           string
+	OutputPath       string
+	NoHeaders        bool
+	NoCache          bool
+	Debug            bool
+	ExcludedItems    []string // item IDs to skip (after NoHeaders filter)
+	NoMedia          bool     // skip all media downloads
+	ExternalMedia    bool     // copy media to ExternalMediaDir instead of embedding in .osz
+	ExternalMediaDir string
 }
 
 // Authenticate creates an authenticated PCO API client.
@@ -139,6 +143,20 @@ func Run(ctx context.Context, client *pco.Client, cfg Config, progress ProgressF
 		items = filtered
 	}
 
+	if len(cfg.ExcludedItems) > 0 {
+		excluded := make(map[string]bool, len(cfg.ExcludedItems))
+		for _, id := range cfg.ExcludedItems {
+			excluded[id] = true
+		}
+		filtered := items[:0]
+		for _, it := range items {
+			if !excluded[it.ID] {
+				filtered = append(filtered, it)
+			}
+		}
+		items = filtered
+	}
+
 	mediaCache, err := cache.NewCache()
 	if err != nil {
 		return "", fmt.Errorf("initializing media cache: %w", err)
@@ -154,17 +172,19 @@ func Run(ctx context.Context, client *pco.Client, cfg Config, progress ProgressF
 		enrichLyrics(ctx, client, items)
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		itemMedia = downloadItemMedia(ctx, client, cfg.ServiceTypeID, plan.ID, items, cfg.NoCache, mediaCache, report)
-	}()
+	if !cfg.NoMedia {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			itemMedia = downloadItemMedia(ctx, client, cfg.ServiceTypeID, plan.ID, items, cfg.NoCache, mediaCache, report)
+		}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		planMedia = downloadPlanAttachments(ctx, client, cfg.ServiceTypeID, plan.ID, cfg.NoCache, mediaCache, report)
-	}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			planMedia = downloadPlanAttachments(ctx, client, cfg.ServiceTypeID, plan.ID, cfg.NoCache, mediaCache, report)
+		}()
+	}
 
 	wg.Wait()
 
@@ -176,7 +196,12 @@ func Run(ctx context.Context, client *pco.Client, cfg Config, progress ProgressF
 
 	convertSlides(itemMedia, planMedia, slidesTempDir, report)
 
-	serviceFile := convert.PlanToServiceFile(items, itemMedia, planMedia)
+	var externalOverrides map[string]string
+	if cfg.ExternalMedia && cfg.ExternalMediaDir != "" && !cfg.NoMedia {
+		externalOverrides, _ = copyToExternalDir(itemMedia, planMedia, cfg.ExternalMediaDir)
+	}
+
+	serviceFile := convert.PlanToServiceFile(items, itemMedia, planMedia, externalOverrides)
 
 	if err := serviceFile.WriteOSZ(output); err != nil {
 		return "", fmt.Errorf("writing %s: %w", output, err)
@@ -468,4 +493,57 @@ func sha256File(path string) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func copyToExternalDir(itemMedia map[string]*cache.MediaFile, planMedia []*cache.MediaFile, externalDir string) (map[string]string, error) {
+	overrides := make(map[string]string)
+	mediaDir := filepath.Join(externalDir, "media")
+	presDir := filepath.Join(externalDir, "presentations")
+
+	process := func(mf *cache.MediaFile) {
+		if mf == nil {
+			return
+		}
+		if len(mf.Slides) > 0 {
+			base := strings.TrimSuffix(mf.OriginalFilename, filepath.Ext(mf.OriginalFilename))
+			dir := filepath.Join(presDir, base)
+			if err := os.MkdirAll(dir, 0750); err != nil {
+				return
+			}
+			_ = copyFile(mf.LocalPath, filepath.Join(dir, mf.OriginalFilename))
+			for i, s := range mf.Slides {
+				_ = copyFile(s.LocalPath, filepath.Join(dir, fmt.Sprintf("slide_%03d.png", i+1)))
+			}
+			overrides[mf.SHA256] = fmt.Sprintf("See %s/ in presentations folder", base)
+		} else {
+			if err := os.MkdirAll(mediaDir, 0750); err != nil {
+				return
+			}
+			_ = copyFile(mf.LocalPath, filepath.Join(mediaDir, mf.OriginalFilename))
+			overrides[mf.SHA256] = fmt.Sprintf("See %s in media folder", mf.OriginalFilename)
+		}
+	}
+
+	for _, mf := range itemMedia {
+		process(mf)
+	}
+	for _, mf := range planMedia {
+		process(mf)
+	}
+	return overrides, nil
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, in)
+	return err
 }

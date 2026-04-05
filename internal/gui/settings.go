@@ -17,7 +17,7 @@ import (
 	"github.com/danieldonoghue/pco2olp/internal/generate"
 )
 
-func showSettingsDialog(win fyne.Window, a fyne.App, reauth func(func(error)), isAuthenticated bool) {
+func showSettingsDialog(win fyne.Window, a fyne.App, reauth func(func(error)), isAuthenticated bool, onSettingsChanged func()) {
 	prefs := a.Preferences()
 
 	// ── PCO Credentials ───────────────────────────────────────────────────
@@ -158,6 +158,49 @@ func showSettingsDialog(win fyne.Window, a fyne.App, reauth func(func(error)), i
 		}, win)
 	})
 
+	// ── Media ─────────────────────────────────────────────────────────────
+	dlMediaCheck := widget.NewCheck("Download missing media", nil)
+	dlMediaCheck.SetChecked(prefs.BoolWithFallback("downloadMediaDefault", true))
+	dlMediaCheck.OnChanged = func(v bool) {
+		prefs.SetBool("downloadMediaDefault", v)
+		onSettingsChanged()
+	}
+
+	externalDirEntry := widget.NewEntry()
+	externalDirEntry.SetPlaceHolder("Select a folder…")
+	if dir := prefs.String("externalMediaDir"); dir != "" {
+		externalDirEntry.SetText(dir)
+	}
+
+	browseExternalBtn := widget.NewButton("Browse…", func() {
+		d := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
+			if err != nil || uri == nil {
+				return
+			}
+			externalDirEntry.SetText(uri.Path())
+		}, win)
+		d.Show()
+	})
+
+	externalRow := container.NewBorder(nil, nil, nil, browseExternalBtn, externalDirEntry)
+
+	useExternalCheck := widget.NewCheck("Use external media folder", nil)
+	useExternalCheck.SetChecked(prefs.BoolWithFallback("externalMediaEnabled", false))
+	setExternalRowEnabled := func(enabled bool) {
+		if enabled {
+			externalDirEntry.Enable()
+			browseExternalBtn.Enable()
+		} else {
+			externalDirEntry.Disable()
+			browseExternalBtn.Disable()
+		}
+	}
+	setExternalRowEnabled(useExternalCheck.Checked)
+	useExternalCheck.OnChanged = func(v bool) {
+		prefs.SetBool("externalMediaEnabled", v)
+		setExternalRowEnabled(v)
+	}
+
 	// ── Layout ────────────────────────────────────────────────────────────
 	var credSection fyne.CanvasObject
 	if bakedIn {
@@ -194,17 +237,25 @@ func showSettingsDialog(win fyne.Window, a fyne.App, reauth func(func(error)), i
 			widget.NewFormItem("Media cache", cacheInfoLabel),
 		),
 		cleanBtn,
+		widget.NewSeparator(),
+		widget.NewLabel("Media"),
+		widget.NewSeparator(),
+		dlMediaCheck,
+		useExternalCheck,
+		widget.NewForm(widget.NewFormItem("External folder", externalRow)),
 	)
 
-	d := dialog.NewCustom("Settings", "Close", content, win)
+	d := dialog.NewCustom("Settings", "Close", container.NewVScroll(container.NewPadded(content)), win)
 	d.SetOnClosed(func() {
 		prefs.SetString("outputDir", outputDirEntry.Text)
+		prefs.SetString("externalMediaDir", externalDirEntry.Text)
 		if !bakedIn {
 			prefs.SetString("clientID", strings.TrimSpace(clientIDEntry.Text))
 			prefs.SetString("clientSecret", strings.TrimSpace(clientSecretEntry.Text))
 		}
+		onSettingsChanged()
 	})
-	d.Resize(fyne.NewSize(500, 460))
+	d.Resize(fyne.NewSize(520, 650))
 	d.Show()
 }
 

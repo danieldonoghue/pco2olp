@@ -15,13 +15,19 @@ import (
 // PlanToServiceFile converts PCO plan items into an OpenLP ServiceFile.
 // itemMedia maps PCO item IDs to downloaded media files.
 // planMedia contains plan-level attachments to append at the end.
-func PlanToServiceFile(items []pco.Item, itemMedia map[string]*cache.MediaFile, planMedia []*cache.MediaFile) *openlp.ServiceFile {
+// externalOverrides maps SHA256 → note text; when non-nil and a file's SHA256 matches,
+// a custom note item is emitted instead of embedding the file in the .osz.
+func PlanToServiceFile(items []pco.Item, itemMedia map[string]*cache.MediaFile, planMedia []*cache.MediaFile, externalOverrides map[string]string) *openlp.ServiceFile {
 	sf := &openlp.ServiceFile{}
 
 	for _, item := range items {
 		var mf *cache.MediaFile
 		if itemMedia != nil {
 			mf = itemMedia[item.ID]
+		}
+		if mf != nil && externalOverrides[mf.SHA256] != "" {
+			sf.Items = append(sf.Items, makeExternalNoteItem(item.Title, externalOverrides[mf.SHA256]))
+			continue
 		}
 		si := itemToServiceItem(item, mf)
 		if si != nil {
@@ -32,6 +38,11 @@ func PlanToServiceFile(items []pco.Item, itemMedia map[string]*cache.MediaFile, 
 
 	// Append plan-level attachments as service items
 	for _, mf := range planMedia {
+		if externalOverrides[mf.SHA256] != "" {
+			title := "Attachment — " + mf.OriginalFilename
+			sf.Items = append(sf.Items, makeExternalNoteItem(title, externalOverrides[mf.SHA256]))
+			continue
+		}
 		si := attachmentToServiceItem(mf)
 		if si != nil {
 			sf.Items = append(sf.Items, *si)
@@ -40,6 +51,11 @@ func PlanToServiceFile(items []pco.Item, itemMedia map[string]*cache.MediaFile, 
 	}
 
 	return sf
+}
+
+func makeExternalNoteItem(title, note string) openlp.ServiceItem {
+	slides := []openlp.SlideData{{Title: title, RawSlide: note, VerseTag: "1"}}
+	return openlp.NewCustomItem(title, "", note, slides)
 }
 
 func itemToServiceItem(item pco.Item, mf *cache.MediaFile) *openlp.ServiceItem {
