@@ -1,0 +1,39 @@
+<div class="version-selector" style="padding:0.6rem 1rem;border-top:1px solid var(--border-color,#eeebee);margin-top:0.5rem;">
+  <label for="version-select" style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--nav-child-link-color,#959396);margin-bottom:0.3rem;">Documentation version</label>
+  <select id="version-select" style="width:100%;font-size:0.8rem;padding:0.2rem 0.4rem;border:1px solid var(--border-color,#eeebee);border-radius:4px;background:var(--body-background-color,#fff);color:inherit;">
+    <option>Loading…</option>
+  </select>
+</div>
+<script>
+(function () {
+  var sel = document.getElementById('version-select');
+  var path = window.location.pathname;
+  var m = path.match(/\/pco2olp\/([^/]+)\//);
+  var current = m ? m[1] : 'latest';
+
+  fetch('/pco2olp/versions.json?_=' + Date.now())
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      sel.innerHTML = '';
+      var versions = data.versions || [];
+      var latest = data.latest || (versions[0] || '');
+      versions.forEach(function (v) {
+        var o = document.createElement('option');
+        o.value = v;
+        o.textContent = v + (v === latest ? ' (latest)' : '');
+        if (v === current) o.selected = true;
+        sel.appendChild(o);
+      });
+    })
+    .catch(function () {
+      sel.innerHTML = '<option value="' + current + '">' + current + '</option>';
+    });
+
+  sel.addEventListener('change', function () {
+    window.location.href = path.replace(
+      /\/pco2olp\/[^/]+\//,
+      '/pco2olp/' + this.value + '/'
+    );
+  });
+})();
+</script>

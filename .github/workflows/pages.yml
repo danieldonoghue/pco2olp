@@ -1,0 +1,133 @@
+name: Deploy Documentation
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to deploy (e.g. v1.2.3) — defaults to latest release'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          else
+            VERSION="$(gh api repos/${{ github.repository }}/releases/latest --jq '.tag_name')"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Deploying docs for ${VERSION}"
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: docs
+
+      - name: Build Jekyll
+        run: |
+          bundle exec jekyll build \
+            --baseurl "/pco2olp/${{ steps.version.outputs.version }}"
+        working-directory: docs
+        env:
+          JEKYLL_ENV: production
+
+      - name: Deploy to gh-pages
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+
+          # Fetch or create gh-pages branch
+          if git ls-remote --exit-code origin gh-pages > /dev/null 2>&1; then
+            git fetch origin gh-pages
+            git worktree add _gh_pages -b gh-pages origin/gh-pages
+          else
+            git worktree add --orphan -b gh-pages _gh_pages
+            touch _gh_pages/.nojekyll  # GitHub Pages: skip re-processing
+          fi
+
+          # Deploy versioned copy
+          rm -rf "_gh_pages/${VERSION}"
+          cp -r docs/_site "_gh_pages/${VERSION}"
+
+          # Deploy as 'latest'
+          rm -rf _gh_pages/latest
+          cp -r docs/_site _gh_pages/latest
+
+          cd _gh_pages
+
+          # Ensure .nojekyll exists (tells GitHub Pages not to run Jekyll again)
+          touch .nojekyll
+
+          # Update versions.json
+          python3 << 'PYEOF'
+import json, os, sys
+
+version = os.environ['VERSION']
+path = 'versions.json'
+
+try:
+    with open(path) as f:
+        data = json.load(f)
+except FileNotFoundError:
+    data = {'versions': [], 'latest': ''}
+
+if version not in data['versions']:
+    data['versions'].insert(0, version)
+
+# Keep versions sorted descending using semantic version comparison
+def ver_key(v):
+    try:
+        return [int(x) for x in v.lstrip('v').split('.')]
+    except ValueError:
+        return [0]
+data['versions'].sort(key=ver_key, reverse=True)
+data['latest'] = data['versions'][0]
+
+with open(path, 'w') as f:
+    json.dump(data, f, indent=2)
+
+print('versions.json updated:', data)
+PYEOF
+
+          # Update root redirect to latest
+          cat > index.html << 'HTMLEOF'
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="0;url=latest/">
+  <title>pco2olp Documentation</title>
+</head>
+<body>
+  <p>Redirecting to <a href="latest/">latest documentation</a>…</p>
+</body>
+</html>
+HTMLEOF
+
+          git add .
+          # Only commit if there are changes
+          git diff --staged --quiet || git commit -m "Deploy docs ${VERSION}"
+          git push origin gh-pages
+        env:
+          VERSION: ${{ steps.version.outputs.version }}

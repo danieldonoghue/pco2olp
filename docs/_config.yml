@@ -1,0 +1,36 @@
+title: pco2olp
+description: Generate OpenLP service files from Planning Center Online
+
+theme: just-the-docs
+
+url: "https://danieldonoghue.github.io"
+baseurl: "/pco2olp/latest"  # overridden at build time: --baseurl "/pco2olp/vX.Y.Z"
+
+aux_links:
+  "GitHub":
+    - "https://github.com/danieldonoghue/pco2olp"
+aux_links_new_tab: true
+
+footer_content: >-
+  &copy; <a href="https://github.com/danieldonoghue">Daniel Donoghue</a>.
+  <a href="https://github.com/danieldonoghue/pco2olp/blob/master/LICENSE">MIT License</a>.
+
+search_enabled: true
+heading_anchors: true
+back_to_top: true
+back_to_top_text: "Back to top"
+
+color_scheme: light
+nav_sort: order
+
+callouts_level: quiet
+callouts:
+  note:
+    title: Note
+    color: blue
+  tip:
+    title: Tip
+    color: green
+  warning:
+    title: Warning
+    color: yellow

@@ -96,7 +96,7 @@ release-gui:
 	@rm -f dist/_gui_arm64 dist/_gui_amd64
 	cd dist && fyne package --executable _gui_universal --name pco2olp --appID $(BUNDLE_ID) --appVersion $(APP_VERSION) --icon $(ICON_PNG)
 	@rm -f dist/_gui_universal
-	@printf '<html><body><p>Converts Planning Center Online service plans to OpenLP service files.</p><p>By <a href="https://github.com/danieldonoghue">Daniel Donoghue</a> &mdash; <a href="https://github.com/danieldonoghue/pco2olp">github.com/danieldonoghue/pco2olp</a></p><p>Build: %s &middot; %s</p></body></html>' \
+	@printf '<html><body><p>Converts Planning Center Online service plans to OpenLP service files.</p><p>By <a href="https://github.com/danieldonoghue">Daniel Donoghue</a> &mdash; <a href="https://github.com/danieldonoghue/pco2olp">github.com/danieldonoghue/pco2olp</a></p><p><a href="https://danieldonoghue.github.io/pco2olp/$(VERSION)/">User Guide</a></p><p>Build: %s &middot; %s</p></body></html>' \
 		'$(COMMIT)' '$(BUILD_DATE)' > dist/pco2olp.app/Contents/Resources/Credits.html
 	cd dist && zip -r pco2olp-gui-$(VERSION)-darwin-universal.zip pco2olp.app
 	@echo "Built dist/pco2olp-gui-$(VERSION)-darwin-universal.zip"
@@ -118,7 +118,7 @@ endif
 	@rm -f dist/_gui_arm64 dist/_gui_amd64
 	cd dist && fyne package --executable _gui_universal --name pco2olp --appID $(BUNDLE_ID) --appVersion $(APP_VERSION) --icon $(ICON_PNG)
 	@rm -f dist/_gui_universal
-	@printf '<html><body><p><b>Built for:</b> %s</p><p>Converts Planning Center Online service plans to OpenLP service files.</p><p>By <a href="https://github.com/danieldonoghue">Daniel Donoghue</a> &mdash; <a href="https://github.com/danieldonoghue/pco2olp">github.com/danieldonoghue/pco2olp</a></p><p>Build: %s &middot; %s</p></body></html>' \
+	@printf '<html><body><p><b>Built for:</b> %s</p><p>Converts Planning Center Online service plans to OpenLP service files.</p><p>By <a href="https://github.com/danieldonoghue">Daniel Donoghue</a> &mdash; <a href="https://github.com/danieldonoghue/pco2olp">github.com/danieldonoghue/pco2olp</a></p><p><a href="https://danieldonoghue.github.io/pco2olp/$(VERSION)/">User Guide</a></p><p>Build: %s &middot; %s</p></body></html>' \
 		'$(ORG_NAME)' '$(COMMIT)' '$(BUILD_DATE)' > dist/pco2olp.app/Contents/Resources/Credits.html
 	cd dist && zip -r pco2olp-gui-$(VERSION)-darwin-universal.zip pco2olp.app
 	@echo "Built dist/pco2olp-gui-$(VERSION)-darwin-universal.zip"
