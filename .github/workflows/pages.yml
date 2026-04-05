@@ -60,19 +60,18 @@ jobs:
           # Fetch or create gh-pages branch
           if git ls-remote --exit-code origin gh-pages > /dev/null 2>&1; then
             git fetch origin gh-pages
-            git worktree add _gh_pages -b gh-pages origin/gh-pages
+            git worktree add _gh_pages origin/gh-pages
           else
-            git worktree add --orphan -b gh-pages _gh_pages
-            touch _gh_pages/.nojekyll  # GitHub Pages: skip re-processing
+            # git worktree add --orphan requires git 2.42+; use checkout --orphan instead
+            git worktree add _gh_pages HEAD
+            git -C _gh_pages checkout --orphan gh-pages
+            git -C _gh_pages rm -rf . > /dev/null 2>&1 || true
+            touch _gh_pages/.nojekyll
           fi
 
           # Deploy versioned copy
           rm -rf "_gh_pages/${VERSION}"
           cp -r docs/_site "_gh_pages/${VERSION}"
-
-          # Deploy as 'latest'
-          rm -rf _gh_pages/latest
-          cp -r docs/_site _gh_pages/latest
 
           cd _gh_pages
 
@@ -124,6 +123,12 @@ PYEOF
 </body>
 </html>
 HTMLEOF
+
+          # Update latest/ redirect to point to newest version
+          LATEST=$(python3 -c "import json; d=json.load(open('versions.json')); print(d['latest'])")
+          mkdir -p latest
+          printf '<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <meta http-equiv="refresh" content="0;url=../%s/">\n  <title>pco2olp Documentation</title>\n</head>\n<body>\n  <p>Redirecting to <a href="../%s/">latest documentation</a>…</p>\n</body>\n</html>\n' \
+              "${LATEST}" "${LATEST}" > latest/index.html
 
           git add .
           # Only commit if there are changes

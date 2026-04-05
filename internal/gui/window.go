@@ -294,7 +294,12 @@ func (s *mainWindow) setupMenu() {
 
 	helpMenu := fyne.NewMenu("Help",
 		fyne.NewMenuItem("User Guide", func() {
-			u, _ := url.Parse(s.docsURL())
+			rawURL := s.docsURL()
+			u, err := url.Parse(rawURL)
+			if err != nil || u == nil || u.Host == "" {
+				dialog.ShowError(fmt.Errorf("invalid user guide URL: %s", rawURL), s.win)
+				return
+			}
 			s.app.OpenURL(u)
 		}),
 	)
@@ -304,10 +309,14 @@ func (s *mainWindow) setupMenu() {
 
 // docsURL returns the versioned user guide URL.
 // Uses docsVersion if set (org builds), otherwise version.
+// Untagged/development builds map to "latest" since only release versions are deployed.
 func (s *mainWindow) docsURL() string {
 	v := s.docsVersion
 	if v == "" {
 		v = s.version
+	}
+	if v == "" || v == "dev" {
+		v = "latest"
 	}
 	return "https://danieldonoghue.github.io/pco2olp/" + v + "/"
 }
