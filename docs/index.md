@@ -3,6 +3,8 @@ title: Introduction
 nav_order: 1
 ---
 
+<img src="{{ '/assets/images/logo.svg' | relative_url }}" alt="pco2olp logo" width="80" style="display:block; margin-bottom:1rem;">
+
 # pco2olp User Guide
 
 pco2olp connects to [Planning Center Online](https://planningcenteronline.com) and generates [OpenLP](https://openlp.org) service files (`.osz`) ready to open directly in OpenLP on the day of your service.

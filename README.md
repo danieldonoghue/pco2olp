@@ -216,6 +216,14 @@ The root URL always redirects to the latest deployed version.
 
 ### Documentation
 
+Docs are updated by editing the markdown files in `docs/` as part of normal development. When a release is tagged and published, the workflow automatically builds the site and deploys it versioned to GitHub Pages — no separate step needed.
+
+To redeploy docs for an existing release (e.g. after a docs-only fix):
+
+```bash
+gh workflow run pages.yml --repo danieldonoghue/pco2olp --field version=v1.0.0
+```
+
 The user guide source lives in `docs/`. To preview locally:
 
 ```bash
@@ -224,6 +232,12 @@ bundle install
 bundle exec jekyll serve
 # Open http://localhost:4000/pco2olp/latest/
 ```
+
+> **macOS note:** The system Ruby shipped with macOS lacks OpenSSL support. Install Ruby via Homebrew first:
+> ```bash
+> brew install ruby
+> export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
+> ```
 
 ### macOS Code Signing (optional)
 

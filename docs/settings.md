@@ -61,16 +61,3 @@ Set a folder using the **Browse…** button next to **External folder**.
 
 {: .tip }
 External media mode is useful when your OpenLP machine and the machine running pco2olp share a network drive, or when you want to manage media separately from the service file.
-
----
-
-## Local preview (developer)
-
-To preview the documentation locally, run from the `docs/` directory:
-
-```
-bundle install
-bundle exec jekyll serve
-```
-
-Then open [http://localhost:4000/pco2olp/latest/](http://localhost:4000/pco2olp/latest/).
