@@ -273,6 +273,67 @@ func TestHTMLToOpenLPItalics(t *testing.T) {
 	}
 }
 
+func TestExternalOverrideForItemMedia(t *testing.T) {
+	items := []pco.Item{
+		{ID: "1", Title: "Worship Video", ItemType: "media"},
+	}
+	mediaMap := map[string]*cache.MediaFile{
+		"1": {
+			SHA256: "abc123", OriginalFilename: "worship.mp4",
+			LocalPath: "/tmp/abc123.mp4", Extension: ".mp4",
+			ContentType: "video/mp4", PCOMediaType: "video",
+		},
+	}
+	overrides := map[string]string{"abc123": "See worship.mp4 in media folder"}
+
+	sf := PlanToServiceFile(items, mediaMap, nil, overrides)
+	if len(sf.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(sf.Items))
+	}
+	// Should be a custom note, not an embedded media item.
+	if sf.Items[0].Header.Plugin != "custom" {
+		t.Errorf("expected custom plugin for external note, got %q", sf.Items[0].Header.Plugin)
+	}
+	if sf.Items[0].Header.Type != 1 {
+		t.Errorf("expected type 1 (text), got %d", sf.Items[0].Header.Type)
+	}
+	if !contains(sf.Items[0].Data[0].RawSlide, "media folder") {
+		t.Errorf("expected override note in slide body, got %q", sf.Items[0].Data[0].RawSlide)
+	}
+	if len(sf.MediaFiles) != 0 {
+		t.Error("expected no embedded media files when override is present")
+	}
+}
+
+func TestExternalOverrideForPlanAttachment(t *testing.T) {
+	planMedia := []*cache.MediaFile{
+		{
+			SHA256: "def456", OriginalFilename: "background.jpg",
+			LocalPath: "/tmp/def456.jpg", Extension: ".jpg",
+			ContentType: "image/jpeg", PCOMediaType: "background_image",
+		},
+	}
+	overrides := map[string]string{"def456": "See background.jpg in media folder"}
+
+	sf := PlanToServiceFile(nil, nil, planMedia, overrides)
+	if len(sf.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(sf.Items))
+	}
+	if sf.Items[0].Header.Plugin != "custom" {
+		t.Errorf("expected custom plugin for external attachment note, got %q", sf.Items[0].Header.Plugin)
+	}
+	if !contains(sf.Items[0].Header.Title, "background.jpg") {
+		t.Errorf("expected attachment filename in title, got %q", sf.Items[0].Header.Title)
+	}
+	if !contains(sf.Items[0].Data[0].RawSlide, "media folder") {
+		t.Errorf("expected override note in slide body, got %q", sf.Items[0].Data[0].RawSlide)
+	}
+	if len(sf.MediaFiles) != 0 {
+		t.Error("expected no embedded media files when override is present")
+	}
+}
+
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && containsStr(s, substr)
 }

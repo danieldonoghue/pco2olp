@@ -198,7 +198,10 @@ func Run(ctx context.Context, client *pco.Client, cfg Config, progress ProgressF
 
 	var externalOverrides map[string]string
 	if cfg.ExternalMedia && cfg.ExternalMediaDir != "" && !cfg.NoMedia {
-		externalOverrides, _ = copyToExternalDir(itemMedia, planMedia, cfg.ExternalMediaDir)
+		externalOverrides, err = copyToExternalDir(itemMedia, planMedia, cfg.ExternalMediaDir)
+		if err != nil {
+			return "", fmt.Errorf("copying media to external dir: %w", err)
+		}
 	}
 
 	serviceFile := convert.PlanToServiceFile(items, itemMedia, planMedia, externalOverrides)
@@ -500,35 +503,47 @@ func copyToExternalDir(itemMedia map[string]*cache.MediaFile, planMedia []*cache
 	mediaDir := filepath.Join(externalDir, "media")
 	presDir := filepath.Join(externalDir, "presentations")
 
-	process := func(mf *cache.MediaFile) {
+	process := func(mf *cache.MediaFile) error {
 		if mf == nil {
-			return
+			return nil
 		}
 		if len(mf.Slides) > 0 {
 			base := strings.TrimSuffix(mf.OriginalFilename, filepath.Ext(mf.OriginalFilename))
 			dir := filepath.Join(presDir, base)
 			if err := os.MkdirAll(dir, 0750); err != nil {
-				return
+				return fmt.Errorf("create presentation directory %q: %w", dir, err)
 			}
-			_ = copyFile(mf.LocalPath, filepath.Join(dir, mf.OriginalFilename))
+			if err := copyFile(mf.LocalPath, filepath.Join(dir, mf.OriginalFilename)); err != nil {
+				return fmt.Errorf("copy presentation file: %w", err)
+			}
 			for i, s := range mf.Slides {
-				_ = copyFile(s.LocalPath, filepath.Join(dir, fmt.Sprintf("slide_%03d.png", i+1)))
+				dst := filepath.Join(dir, fmt.Sprintf("slide_%03d.png", i+1))
+				if err := copyFile(s.LocalPath, dst); err != nil {
+					return fmt.Errorf("copy slide %d: %w", i+1, err)
+				}
 			}
 			overrides[mf.SHA256] = fmt.Sprintf("See %s/ in presentations folder", base)
 		} else {
 			if err := os.MkdirAll(mediaDir, 0750); err != nil {
-				return
+				return fmt.Errorf("create media directory %q: %w", mediaDir, err)
 			}
-			_ = copyFile(mf.LocalPath, filepath.Join(mediaDir, mf.OriginalFilename))
+			if err := copyFile(mf.LocalPath, filepath.Join(mediaDir, mf.OriginalFilename)); err != nil {
+				return fmt.Errorf("copy media file: %w", err)
+			}
 			overrides[mf.SHA256] = fmt.Sprintf("See %s in media folder", mf.OriginalFilename)
 		}
+		return nil
 	}
 
 	for _, mf := range itemMedia {
-		process(mf)
+		if err := process(mf); err != nil {
+			return nil, err
+		}
 	}
 	for _, mf := range planMedia {
-		process(mf)
+		if err := process(mf); err != nil {
+			return nil, err
+		}
 	}
 	return overrides, nil
 }
@@ -543,7 +558,14 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
-	_, err = io.Copy(out, in)
-	return err
+	if _, err = io.Copy(out, in); err != nil {
+		_ = out.Close()
+		_ = os.Remove(dst)
+		return err
+	}
+	if err = out.Close(); err != nil {
+		_ = os.Remove(dst)
+		return err
+	}
+	return nil
 }

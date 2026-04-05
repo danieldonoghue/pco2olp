@@ -718,6 +718,7 @@ func (s *mainWindow) updateNoCacheCheck() {
 		s.noCache = false
 		s.noCacheCheck.Disable()
 	}
+	s.updateGenButton()
 }
 
 // updateGenButton enables the generate button only when there is something to
@@ -736,7 +737,7 @@ func (s *mainWindow) updateGenButton() {
 			return
 		}
 	}
-	if len(s.planAttachments) > 0 {
+	if len(s.planAttachments) > 0 && s.app.Preferences().BoolWithFallback("downloadMediaDefault", true) {
 		s.genButton.Enable()
 		s.genDropBtn.Enable()
 		return
