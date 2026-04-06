@@ -254,3 +254,9 @@ jobs:
             --title "${{ github.ref_name }}" \
             --notes-file release-notes.md \
             dist/*
+
+      - name: Trigger docs deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run pages.yml --field version="${{ github.ref_name }}"
