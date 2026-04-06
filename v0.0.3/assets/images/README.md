@@ -10,7 +10,7 @@ Place screenshot and image files here. File names referenced in the documentatio
 | `generate-progress.png` | Using the App | Generation progress dialog mid-run |
 | `generate-done.png` | Using the App | Post-generation completion dialog |
 | `authentication.png` | Authentication | Browser OAuth prompt *(optional)* |
-| `gatekeeper.png` | Installation | macOS Gatekeeper warning + System Settings resolution *(optional)* |
-| `smartscreen.png` | Installation | Windows SmartScreen warning *(optional)* |
+| `gatekeeper.png` | Installation | macOS Gatekeeper warning dialog |
+| `smartscreen.png` | Installation | Windows SmartScreen warning dialog |
 
 Recommended: 2× (retina/HiDPI) PNG, cropped to the relevant UI area, ~800–1200px wide.
