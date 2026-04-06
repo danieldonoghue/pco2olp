@@ -34,9 +34,11 @@ pco2olp connects to [Planning Center Online](https://planningcenteronline.com) a
 | macOS (Apple Silicon) | ✓ | ✓ |
 | macOS (Intel) | ✓ | ✓ |
 | Windows (x64) | ✓ | ✓ |
-| Windows (ARM64) | ✓ | ✓ |
+| Windows (ARM64) | ✓ ¹ | ✓ |
 | Linux (x64) | ✓ | ✓ |
 | Linux (ARM64) | — | ✓ |
+
+*¹ Windows ARM64 runs the x64 GUI binary via Windows 11's built-in x64 emulation.*
 
 ## Quick start
 

@@ -13,10 +13,12 @@ Download the latest release from the [GitHub Releases page](https://github.com/d
 |---|---|
 | macOS (Universal) | `pco2olp-gui-vX.Y.Z-darwin-universal.zip` |
 | Windows (x64) | `pco2olp-gui-windows-amd64.exe` |
-| Windows (ARM64) | `pco2olp-gui-windows-arm64.exe` |
 | Linux (x64 GUI) | `pco2olp-gui-linux-amd64` |
 | Linux (x64 CLI) | `pco2olp-linux-amd64` |
 | Linux (ARM64 CLI) | `pco2olp-linux-arm64` |
+
+{: .note }
+Windows ARM64 users: download the x64 GUI binary — Windows 11 ARM64 runs x64 applications natively via emulation. A native ARM64 CLI binary (`pco2olp-windows-arm64.exe`) is also available.
 
 ---
 
@@ -63,7 +65,7 @@ If poppler is not installed, PDF plan attachments will be included as-is rather 
 
 ## Windows
 
-1. Download `pco2olp-gui-windows-amd64.exe` (or the ARM64 version)
+1. Download `pco2olp-gui-windows-amd64.exe`
 2. Move it to a convenient location (e.g. `C:\Program Files\pco2olp\`)
 3. Double-click to run
 

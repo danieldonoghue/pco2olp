@@ -6,8 +6,9 @@
 |----------|----------|
 | macOS (Universal) | `pco2olp-gui-VERSION-darwin-universal.zip` — unzip and drag to Applications |
 | Windows (x64) | `pco2olp-gui-windows-amd64.exe` |
-| Windows (arm64) | `pco2olp-gui-windows-arm64.exe` |
 | Linux (amd64) | `pco2olp-gui-linux-amd64` |
+
+> Windows ARM64 users: use the x64 GUI binary above — Windows 11 ARM64 runs x64 apps natively via emulation.
 
 ### Command-Line (CLI)
 

@@ -22,7 +22,7 @@ A CLI tool and graphical app that authenticates with Planning Center Online, fet
 - Generate `.osz` service files with songs (OpenLyrics XML), custom slides, images, media, and presentations
 - Automatically downloads and caches media from PCO (videos, images, presentations)
 - Preview service plans without generating files (dry-run mode)
-- Cross-platform: macOS (Intel + Apple Silicon), Linux (x86_64 + ARM64), Windows (x64 + ARM64)
+- Cross-platform: macOS (Intel + Apple Silicon), Linux (x86_64 + ARM64), Windows (x64)
 
 ## GUI
 
@@ -32,8 +32,9 @@ Download the app for your platform from the [releases page](https://github.com/d
 |----------|----------|
 | macOS (Universal) | `pco2olp-gui-<version>-darwin-universal.zip` — unzip and drag to Applications |
 | Windows (x64) | `pco2olp-gui-windows-amd64.exe` — double-click to launch |
-| Windows (arm64) | `pco2olp-gui-windows-arm64.exe` — double-click to launch |
 | Linux (x64) | `pco2olp-gui-linux-amd64` — run from terminal |
+
+> Windows ARM64 users can run the x64 GUI binary — Windows 11 ARM64 includes built-in x64 emulation.
 
 The GUI launches automatically when run without arguments. It lets you pick a service type, browse plans, preview items and attachments, and generate the `.osz` file with a single click.
 
@@ -209,7 +210,7 @@ git push origin v1.2.0
 
 The workflow produces:
 - CLI binaries for all platforms
-- GUI binaries (Linux x64, Windows x64/ARM64) and a macOS universal `.app` bundle
+- GUI binaries (Linux x64, Windows x64) and a macOS universal `.app` bundle
 - Versioned documentation deployed to `https://danieldonoghue.github.io/pco2olp/v1.2.0/`
 
 The root URL always redirects to the latest deployed version.
