@@ -7,6 +7,8 @@ nav_order: 5
 
 Open Settings from the app menu (**pco2olp → Settings…** on macOS, or ⌘,).
 
+<img src="{{ '/assets/images/settings.png' | relative_url }}" alt="Settings dialog" class="screenshot">
+
 ---
 
 ## Planning Center Credentials
