@@ -110,6 +110,7 @@ jobs:
         shell: bash
         env:
           CC: clang
+          CGO_CFLAGS: "-Wno-deprecated-non-prototype"
         run: |
           VERSION="${{ github.ref_name }}"
           COMMIT="$(git rev-parse --short HEAD)"
