@@ -32,6 +32,8 @@ Windows ARM64 users: download the x64 GUI binary — Windows 11 ARM64 runs x64 a
 
 Because the app is downloaded from the internet, macOS may block it on first launch.
 
+<img src="{{ '/assets/images/gatekeeper.png' | relative_url }}" alt="macOS Gatekeeper warning" class="screenshot">
+
 **Option A — System Settings (recommended)**
 1. Try to open the app — you will see a warning dialog
 2. Open **System Settings → Privacy & Security**
@@ -72,6 +74,8 @@ If poppler is not installed, PDF plan attachments will be included as-is rather 
 ### SmartScreen warning
 
 Windows may show a SmartScreen warning on first run:
+
+<img src="{{ '/assets/images/smartscreen.png' | relative_url }}" alt="Windows SmartScreen warning" class="screenshot">
 
 1. Click **More info**
 2. Click **Run anyway**
