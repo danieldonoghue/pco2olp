@@ -19,8 +19,7 @@ The main window has three sections:
 - **Centre** — service items list and plan attachments list
 - **Bottom** — output path, options, and the Generate button
 
-{: .note }
-📸 *Screenshot: main window with a plan loaded and items visible.*
+<img src="{{ '/assets/images/main-window.png' | relative_url }}" alt="Main window with a plan loaded" class="screenshot">
 
 ## Selecting a service type
 
@@ -75,7 +74,11 @@ Click **Generate Service File** to produce the `.osz` file.
 
 A progress dialog shows each step: authenticating, fetching items, downloading media, converting presentations, and writing the file.
 
+<img src="{{ '/assets/images/generate-progress.png' | relative_url }}" alt="Generation progress dialog" class="screenshot">
+
 When complete, a dialog shows the filename and size. Click **Show in Finder** (macOS) or **Show in Explorer** (Windows) to reveal the file.
+
+<img src="{{ '/assets/images/generate-done.png' | relative_url }}" alt="Generation complete dialog" class="screenshot">
 
 ### Alternative media mode
 
@@ -85,6 +88,10 @@ The dropdown arrow (▾) next to the Generate button offers an alternative:
 - If your default is **external media**, the dropdown offers **Generate with embedded media**
 
 See [Settings → Media](settings#media) for how to set your default.
+
+## Help
+
+Open **Help → User Guide** from the menu bar to open this documentation in your browser.
 
 ## Opening in OpenLP
 
